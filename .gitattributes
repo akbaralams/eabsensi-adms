@@ -3,3 +3,5 @@ tests/fixtures/handshake/*.txt -text
 # Dibaca CI di Linux dan Rust; selalu LF.
 SCHEMA_VERSION text eol=lf
 tests/fixtures/outcome-cases.json -text
+# Unit systemd harus LF walau diambil dari checkout Windows.
+deploy/*.service text eol=lf

@@ -41,7 +41,7 @@ Baca `../eabsensi-99` secara menyeluruh dan tulis `docs/legacy-analysis.md`:
 - Dekripsi hanya di ADMS untuk merakit perintah `add_fingerprint` (`DATA FP PIN=..	FID=..	Size=..	Valid=1	TMP=..`); isi template tidak pernah ditulis ke log atau pesan galat.
 - **Selesai bila**: uji unit enkripsi (bolak-balik, AAD salah ditolak, kunci lama dengan `key_id` lain), uji integrasi unggah lalu kirim ulang ke mesin lain, dan tidak ada isi template di log.
 
-## [ ] Task 6. Simulator mesin
+## [x] Task 6. Simulator mesin
 - Binary/test helper yang meniru mesin ZKTeco: handshake, kirim ATTLOG (termasuk kiriman ulang dan batch besar), polling perintah, kirim hasil perintah.
 - **Selesai bila**: test integrasi end-to-end berjalan di CI dengan simulator; uji beban sederhana (mis. 100 mesin polling bersamaan) tercatat.
 

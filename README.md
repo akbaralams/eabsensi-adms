@@ -49,3 +49,24 @@ Makro `sqlx` 0.9 membaca berkas `.env` di **semua folder induk** proyek dan gaga
 ```powershell
 subst X: C:\laragon\www\eabsensi-adms   # lalu: cd X:\ ; cargo build
 ```
+
+## Simulator mesin
+
+`src/simulator` (pustaka) dan `adms-sim` (biner) meniru mesin ZKTeco lewat TCP sungguhan dengan bentuk request yang sama dengan log produksi lama: handshake, unggah ATTLOG (termasuk kirim ulang dan batch besar), polling perintah, hasil perintah, dan unggah template. Dipakai oleh uji end-to-end (`tests/e2e.rs`) dan uji beban (`tests/simulator_load.rs`, hasil di [docs/load-test.md](docs/load-test.md)).
+
+```bash
+# mesin harus sudah terdaftar di tabel devices (D2); --pin = employee_number pegawai yang ada
+cargo run --bin adms-sim -- --url http://127.0.0.1:8090 --serial SN-0001 --rows 20 --cycles 3 --pin 12345
+cargo run --bin adms-sim -- --url http://127.0.0.1:8090 --serial LOAD --machines 100 --cycles 20 --rows 20 --pin 12345
+```
+
+Opsi: `--machines N` (serial menjadi `<serial>-0000`, ...), `--cycles N`, `--rows N`, `--delay-ms MS`, `--resend all|stamp` (apakah mesin mengirim ulang seluruh ingatan tiap koneksi seperti yang tercatat di log lama, atau hanya yang melewati stamp server), `--device-type att`. Keluar dengan status non-nol bila ada galat jaringan atau status server.
+
+Mendaftarkan mesin simulasi di database dev:
+
+```sql
+INSERT INTO devices (serial_number, name, created_at, updated_at)
+SELECT 'SN-' || lpad(n::text, 4, '0'), 'Simulasi', now(), now() FROM generate_series(1, 3) n;
+```
+
+Perilaku firmware yang belum terbukti (mis. apakah stamp menghentikan pengiriman ulang) diuji pada kedua kemungkinan; simulator bukan pengganti uji di mesin fisik.

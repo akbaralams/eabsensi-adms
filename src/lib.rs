@@ -5,5 +5,6 @@ pub mod db;
 pub mod http;
 pub mod ingest;
 pub mod protocol;
+pub mod simulator;
 pub mod state;
 pub mod vault;

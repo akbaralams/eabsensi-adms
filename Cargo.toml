@@ -2,6 +2,7 @@
 name = "eabsensi-adms"
 version = "0.1.0"
 edition = "2024"
+default-run = "eabsensi-adms"
 
 [dependencies]
 aes-gcm = { version = "0.11.1", features = ["zeroize"] }
@@ -16,7 +17,7 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "macros", "chrono", "json"] }
 thiserror = "2.0.21"
-tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "signal", "net", "time"] }
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "signal", "net", "time", "io-util"] }
 tower-http = { version = "0.7.1", default-features = false, features = ["timeout", "trace"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["json", "env-filter"] }

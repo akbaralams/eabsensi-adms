@@ -51,6 +51,15 @@ pub async fn pool() -> PgPool {
         .expect("database tidak terjangkau");
 
     // Sisa uji yang gagal di tengah jalan; hanya yang sudah tua agar tidak mengganggu uji paralel.
+    // `device_logs.device_id` bersifat RESTRICT, jadi log sisa uji dihapus lebih dulu.
+    sqlx::query(
+        "DELETE FROM device_logs WHERE device_id IN (SELECT id FROM devices \
+          WHERE serial_number LIKE 'TEST-ADMS-%' \
+            AND created_at < (now() AT TIME ZONE 'UTC') - interval '1 hour')",
+    )
+    .execute(&pool)
+    .await
+    .expect("pembersihan log sisa uji gagal");
     sqlx::query(
         "DELETE FROM devices WHERE serial_number LIKE 'TEST-ADMS-%' \
          AND created_at < (now() AT TIME ZONE 'UTC') - interval '1 hour'",
@@ -390,4 +399,39 @@ impl TestEmployee {
             .await
             .unwrap();
     }
+}
+
+/// Server ADMS sungguhan di port acak (`127.0.0.1:0`) agar simulator berbicara lewat TCP.
+/// Dihentikan saat dilepas.
+pub struct Server {
+    pub addr: std::net::SocketAddr,
+    handle: tokio::task::JoinHandle<()>,
+}
+
+impl Server {
+    /// `host:port` untuk simulator.
+    pub fn authority(&self) -> String {
+        self.addr.to_string()
+    }
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        self.handle.abort();
+    }
+}
+
+pub async fn spawn(router: Router) -> Server {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("gagal membuka port uji");
+    let addr = listener.local_addr().unwrap();
+    let handle = tokio::spawn(async move {
+        let _ = axum::serve(
+            listener,
+            router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        )
+        .await;
+    });
+    Server { addr, handle }
 }

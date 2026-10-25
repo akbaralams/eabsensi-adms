@@ -138,3 +138,23 @@ Perintah v2 merujuk `employee_id` dan `biometric_template_id`. Saat `getrequest`
 
 ### Temuan saat menguji
 Pemangkasan spasi sebelum mengganti spasi menjadi `+` merusak template yang diawali atau diakhiri `+` (mesin mengirim `+` sebagai spasi). Diperbaiki dan diuji (`spasi_di_awal_dan_akhir_nilai_juga_tanda_plus`).
+
+## Task 6: simulator mesin
+
+### Apa yang ditiru
+- **Klien HTTP mentah** (`simulator::http`): HTTP/1.1, satu koneksi per request, `Connection: close`, header `Content-Type:` kosong, `Host: <ip>:<port>`, `User-Agent: iClock Proxy/1.09`, urutan header seperti log produksi. Dibuat sendiri (bukan `reqwest`) agar bentuk request persis sama dan tanpa dependensi baru.
+- **Mesin** (`simulator::Machine`): ingatan log, daftar user, template, opsi yang diterima. Siklus `cycle()` = handshake, unggah log, polling, jalankan perintah (INFO dijawab dengan badan info perangkat; `CHECK`, `REBOOT`, `SET OPTIONS`, `DATA USER`, `DATA FP` dijawab per `ID`; `DATA FP` ditolak bila `Size` tidak cocok dengan panjang template, seperti firmware yang memeriksa panjangnya). Mesin yang ditolak server berhenti setelah handshake dan datanya tetap di ingatan.
+- **Kebijakan kirim ulang** (`Resend`): `All` mengirim seluruh ingatan tiap koneksi (yang tercatat di log lama); `FromStamp` hanya log yang detik ZK-nya melewati stamp yang dikembalikan server (hipotesis bila stamp bekerja). Kedua jalur diuji end-to-end.
+- **`Stamp` di unggahan** = detik ZK log terakhir di batch itu (sama dengan nilai nyata di log produksi, mis. `785168153`).
+
+### Uji end-to-end (`tests/e2e.rs`, server dan simulator lewat TCP)
+Siklus mesin baru (INFO, CHECK, bentuk handshake berubah, kiriman ulang berkali-kali tanpa duplikat), jalur `FromStamp`, batch 5.000 baris dalam 5 request, dua koneksi bersamaan dari mesin yang sama (tidak ada punch ganda), perintah operator (reboot, set_time dua baris, add_user) dijalankan dan hasilnya tercatat, mesin tak terdaftar/nonaktif **tidak kehilangan data** dan seluruh backlog masuk setelah didaftarkan (keputusan balasan kosong, bukan `OK`), serta template sidik jari dari satu mesin sampai utuh ke mesin lain lewat server.
+
+### Uji beban
+Lihat [load-test.md](load-test.md): 100 mesin bersamaan, 4.700 request siklus penuh dan 3.000 polling tanpa galat, ±425-460 request/detik pada laptop pengembangan, p99 < 1 detik.
+
+### Catatan teknis
+- `cargo run` memakai `default-run = "eabsensi-adms"` (ada dua biner: server dan `adms-sim`).
+- `Machine::take_stats()` menyerahkan latensi dan galat per request untuk dirangkum `LatencyStats` (persentil nearest-rank).
+- Penyapu sisa uji (`pool()` di `tests/common`) kini menghapus log mentah mesin uji yang sudah tua sebelum menghapus mesinnya (`device_logs.device_id` bersifat RESTRICT); sebelumnya satu sisa uji bisa membuat semua uji berikutnya gagal.
+- Dalam e2e, kelas prioritas dikirim satu per koneksi, jadi `CHECK` (kelas 1) mendahului `add_fingerprint` (kelas 4); uji menjalankan beberapa siklus.

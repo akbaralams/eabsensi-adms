@@ -3,6 +3,7 @@
 //! fixture yang dibangkitkan dari kode PHP lama (`tests/fixtures/`).
 
 pub mod attlog;
+pub mod biometric;
 pub mod command;
 pub mod handshake;
 pub mod info;

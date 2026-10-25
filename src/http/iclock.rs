@@ -10,16 +10,19 @@ use axum::body::Bytes;
 use axum::extract::{Query, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use chrono::Utc;
 use chrono_tz::Tz;
 use serde::Deserialize;
 
-use crate::db::{commands, devices};
-use crate::protocol::command::{self, CommandKind, DeviceCmdBody, RenderError, User};
+use crate::db::{biometrics, commands, devices};
+use crate::protocol::command::{self, CommandKind, DeviceCmdBody, Fingerprint, RenderError, User};
 use crate::protocol::handshake::{self, HandshakeDevice, Stamps};
 use crate::protocol::info::{self, DeviceInfo};
 use crate::protocol::zk_time;
 use crate::state::AppState;
+use crate::vault::{Aad, VaultError};
 
 /// `Content-Type` yang dikirim kode lama (Symfony menambahkan charset pada `text/*`).
 const PLAIN: &str = "text/plain; charset=UTF-8";
@@ -55,6 +58,14 @@ pub struct AppError;
 impl From<sqlx::Error> for AppError {
     fn from(error: sqlx::Error) -> Self {
         tracing::error!(%error, "galat database saat melayani mesin");
+        Self
+    }
+}
+
+impl From<crate::ingest::biometrics::Error> for AppError {
+    fn from(error: crate::ingest::biometrics::Error) -> Self {
+        // Galat database dan brankas dicatat tanpa isi apa pun (tidak ada data biometrik di sini).
+        tracing::error!(%error, "galat saat menyimpan template biometrik");
         Self
     }
 }
@@ -222,7 +233,26 @@ pub async fn poll(
 
     let mut body = String::new();
     for item in &claimed {
-        let rendered = match CommandKind::from_db(&item.command_type) {
+        let kind = CommandKind::from_db(&item.command_type);
+
+        // Template sidik jari dibuka (didekripsi) hanya di sini, tepat sebelum dikirim.
+        let mut template_b64 = String::new();
+        let mut fingerprint_meta: Option<(i16, i32)> = None;
+        if kind == Some(CommandKind::AddFingerprint) {
+            match load_fingerprint(&state, &device, item).await? {
+                Ok((finger_index, size, encoded)) => {
+                    fingerprint_meta = Some((finger_index, size));
+                    template_b64 = encoded;
+                }
+                Err(reason) => {
+                    tracing::warn!(serial = %serial, perintah = item.id, alasan = reason, "perintah kirim sidik jari gagal");
+                    commands::fail(&state.db, item.id, reason).await?;
+                    continue;
+                }
+            }
+        }
+
+        let rendered = match kind {
             None => Err(RenderError::Unsupported),
             Some(kind) => command::render(&command::Render {
                 id: item.id,
@@ -236,6 +266,11 @@ pub async fn poll(
                         pin: &employee.employee_number,
                         name: &employee.name,
                     }),
+                fingerprint: fingerprint_meta.map(|(finger_index, size)| Fingerprint {
+                    finger_index,
+                    size,
+                    template: &template_b64,
+                }),
             }),
         };
 
@@ -304,4 +339,65 @@ pub async fn command_result(
     }
 
     Ok(ok())
+}
+
+/// Memuat dan mendekripsi template untuk perintah `add_fingerprint`. Mengembalikan
+/// `(nomor jari, ukuran asli, base64)` atau alasan singkat (aman ditampilkan di UI v2; tidak
+/// memuat isi template atau rincian kunci) bila perintah tidak bisa dikirim.
+async fn load_fingerprint(
+    state: &AppState,
+    device: &devices::Device,
+    item: &commands::Claimed,
+) -> Result<Result<(i16, i32, String), &'static str>, AppError> {
+    let Some(vault) = state.biometrics.vault.as_ref() else {
+        return Ok(Err("kunci biometrik belum dikonfigurasi di server"));
+    };
+    let Some(template_id) = item.biometric_template_id else {
+        return Ok(Err("perintah tidak merujuk template"));
+    };
+    let Some(stored) = biometrics::find(&state.db, template_id).await? else {
+        return Ok(Err("template tidak ditemukan"));
+    };
+    if Some(stored.employee_id) != item.employee_id {
+        return Ok(Err("template bukan milik pegawai pada perintah ini"));
+    }
+    if stored.kind != "fingerprint" {
+        return Ok(Err("hanya template sidik jari yang bisa dikirim"));
+    }
+    if !stored.is_valid {
+        return Ok(Err("template ditandai tidak valid oleh mesin asalnya"));
+    }
+    if let Some(target) = device.fp_version.as_deref()
+        && !stored.algorithm_version.is_empty()
+        && stored.algorithm_version != target
+    {
+        return Ok(Err(
+            "versi algoritma sidik jari tidak cocok dengan mesin tujuan",
+        ));
+    }
+
+    let aad = Aad {
+        employee_id: stored.employee_id,
+        kind: &stored.kind,
+        finger_index: stored.finger_index,
+        algorithm_version: &stored.algorithm_version,
+    };
+    match vault.decrypt(&aad, &stored.ciphertext, &stored.nonce, &stored.key_id) {
+        Ok(plain) => Ok(Ok((
+            stored.finger_index,
+            stored.original_size,
+            STANDARD.encode(plain),
+        ))),
+        Err(error) => {
+            let unknown = matches!(error, VaultError::UnknownKey);
+            tracing::error!(
+                template = stored.id,
+                kunci_tidak_dikenal = unknown,
+                "template tidak dapat didekripsi"
+            );
+            Ok(Err(
+                "template tidak dapat dibuka; periksa kunci biometrik di server",
+            ))
+        }
+    }
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id,\n                  serial_number,\n                  device_type,\n                  push_version,\n                  initialized_at IS NOT NULL AS \"initialized!\",\n                  timezone,\n                  poll_delay_seconds,\n                  error_delay_seconds,\n                  attlog_stamp,\n                  operlog_stamp,\n                  photo_stamp,\n                  biodata_stamp\n             FROM devices\n            WHERE serial_number = $1 AND is_active",
+  "query": "SELECT id,\n                  serial_number,\n                  device_type,\n                  push_version,\n                  initialized_at IS NOT NULL AS \"initialized!\",\n                  timezone,\n                  poll_delay_seconds,\n                  error_delay_seconds,\n                  attlog_stamp,\n                  operlog_stamp,\n                  photo_stamp,\n                  biodata_stamp,\n                  NULLIF(left(reported_options ->> '~ZKFPVersion', 16), '') AS fp_version,\n                  NULLIF(left(reported_options ->> 'FaceVersion', 16), '') AS face_version\n             FROM devices\n            WHERE serial_number = $1 AND is_active",
   "describe": {
     "columns": [
       {
@@ -129,6 +129,18 @@
             "name": "biodata_stamp"
           }
         }
+      },
+      {
+        "ordinal": 12,
+        "name": "fp_version",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 13,
+        "name": "face_version",
+        "type_info": "Text",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -148,8 +160,10 @@
       true,
       true,
       true,
-      true
+      true,
+      null,
+      null
     ]
   },
-  "hash": "e21038033494df14a348410f86e01bd5990ea97c2d361b6ac16a41f46634a9cf"
+  "hash": "da28bb847646e86658cfbc0432c3a9cd3293dd861b94049b7bd922c54d8e79d8"
 }

@@ -36,7 +36,7 @@ Baca `../eabsensi-99` secara menyeluruh dan tulis `docs/legacy-analysis.md`:
 - Endpoint lain (`fdata`, `registry`, `push`, `ping`, `rtdata`, `querydata`) sesuai keputusan Task 2.
 - **Selesai bila**: kiriman ulang batch yang sama tidak menambah punch; punch muncul di kehadiran harian web v2.
 
-## [ ] Task 5b. Biometrik terenkripsi (keputusan D1)
+## [x] Task 5b. Biometrik terenkripsi (keputusan D1)
 - Terima baris `FP`/`FACE`/`BIOPHOTO` (di `POST /iclock/cdata` `table=OPERLOG`, sementara `OPLOG` tetap diabaikan, D6) dan `table=tabledata` `templatev10`/`biophoto`; simpan ke `biometric_templates` hanya untuk pegawai dikenal, terenkripsi AES-256-GCM (kunci `BIOMETRIC_KEY` + `BIOMETRIC_KEY_ID`, AAD `employee_id|kind|finger_index|algorithm_version`). `face_photo` hanya bila `BIOMETRIC_STORE_FACE_PHOTO=true`.
 - Dekripsi hanya di ADMS untuk merakit perintah `add_fingerprint` (`DATA FP PIN=..	FID=..	Size=..	Valid=1	TMP=..`); isi template tidak pernah ditulis ke log atau pesan galat.
 - **Selesai bila**: uji unit enkripsi (bolak-balik, AAD salah ditolak, kunci lama dengan `key_id` lain), uji integrasi unggah lalu kirim ulang ke mesin lain, dan tidak ada isi template di log.

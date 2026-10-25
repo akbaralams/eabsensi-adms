@@ -13,7 +13,7 @@ use axum::Router;
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode, header};
 use eabsensi_adms::http::{self, Limits};
-use eabsensi_adms::state::{AppState, IngestRules, QueueSettings};
+use eabsensi_adms::state::{AppState, Biometrics, IngestRules, QueueSettings};
 use http_body_util::BodyExt;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -74,11 +74,16 @@ pub async fn pool() -> PgPool {
 }
 
 pub fn app(pool: &PgPool, queue: QueueSettings) -> Router {
+    app_with(pool, queue, Biometrics::disabled())
+}
+
+pub fn app_with(pool: &PgPool, queue: QueueSettings, biometrics: Biometrics) -> Router {
     http::router(
         AppState {
             db: pool.clone(),
             queue,
             ingest: default_ingest(),
+            biometrics,
         },
         Limits {
             max_body_bytes: 1024 * 1024,

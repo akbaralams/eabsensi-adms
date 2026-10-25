@@ -6,3 +6,4 @@ pub mod http;
 pub mod ingest;
 pub mod protocol;
 pub mod state;
+pub mod vault;

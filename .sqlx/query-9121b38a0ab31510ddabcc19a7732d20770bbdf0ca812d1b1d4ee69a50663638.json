@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, employee_id, kind, finger_index, algorithm_version, is_valid,\n                  original_size, ciphertext, nonce, key_id\n             FROM biometric_templates\n            WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "biometric_templates",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "employee_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "biometric_templates",
+            "name": "employee_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "biometric_templates",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "finger_index",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "biometric_templates",
+            "name": "finger_index"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "algorithm_version",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "biometric_templates",
+            "name": "algorithm_version"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_valid",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "biometric_templates",
+            "name": "is_valid"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "original_size",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "biometric_templates",
+            "name": "original_size"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "ciphertext",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "biometric_templates",
+            "name": "ciphertext"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "nonce",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "biometric_templates",
+            "name": "nonce"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "key_id",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "biometric_templates",
+            "name": "key_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9121b38a0ab31510ddabcc19a7732d20770bbdf0ca812d1b1d4ee69a50663638"
+}

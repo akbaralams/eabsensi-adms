@@ -65,6 +65,16 @@ pub struct User<'a> {
     pub name: &'a str,
 }
 
+/// Template sidik jari yang sudah didekripsi, siap dikirim ke mesin.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Fingerprint<'a> {
+    pub finger_index: i16,
+    /// `Size` asli dari mesin (byte).
+    pub size: i32,
+    /// Template dalam base64 standar.
+    pub template: &'a str,
+}
+
 /// Bahan merakit satu perintah.
 #[derive(Debug, Clone, Copy)]
 pub struct Render<'a> {
@@ -75,6 +85,7 @@ pub struct Render<'a> {
     /// Detik ZK untuk `DateTime` (`zk_time::encode` dari waktu UTC sekarang).
     pub zk_now: i64,
     pub user: Option<User<'a>>,
+    pub fingerprint: Option<Fingerprint<'a>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -85,6 +96,8 @@ pub enum RenderError {
     InvalidPin,
     #[error("jenis perintah ini belum didukung server")]
     Unsupported,
+    #[error("data biometrik untuk perintah ini tidak tersedia")]
+    MissingBiometric,
 }
 
 /// Merakit baris perintah, masing-masing berakhir LF. `set_time` menghasilkan dua baris dengan
@@ -112,7 +125,17 @@ pub fn render(input: &Render<'_>) -> Result<String, RenderError> {
                 sanitize_name(user.name)
             ))
         }
-        CommandKind::AddFingerprint => Err(RenderError::Unsupported),
+        CommandKind::AddFingerprint => {
+            let user = input.user.ok_or(RenderError::MissingUser)?;
+            if !is_valid_pin(user.pin) {
+                return Err(RenderError::InvalidPin);
+            }
+            let fingerprint = input.fingerprint.ok_or(RenderError::MissingBiometric)?;
+            Ok(format!(
+                "C:{id}:DATA FP PIN={}\tFID={}\tSize={}\tValid=1\tTMP={}\n",
+                user.pin, fingerprint.finger_index, fingerprint.size, fingerprint.template
+            ))
+        }
     }
 }
 
@@ -205,6 +228,7 @@ mod tests {
             offset_minutes: 420,
             zk_now: 785_149_992,
             user: None,
+            fingerprint: None,
         }
     }
 
@@ -295,11 +319,45 @@ mod tests {
     }
 
     #[test]
-    fn add_fingerprint_belum_didukung() {
+    fn add_fingerprint_memakai_format_lama() {
+        let mut input = base(CommandKind::AddFingerprint);
+        input.user = Some(User {
+            pin: "12345",
+            name: "Budi",
+        });
+        input.fingerprint = Some(Fingerprint {
+            finger_index: 3,
+            size: 6,
+            template: "AQIDBAUG",
+        });
+
         assert_eq!(
-            render(&base(CommandKind::AddFingerprint)),
-            Err(RenderError::Unsupported)
+            render(&input).unwrap(),
+            "C:90470:DATA FP PIN=12345\tFID=3\tSize=6\tValid=1\tTMP=AQIDBAUG\n"
         );
+    }
+
+    #[test]
+    fn add_fingerprint_menolak_data_yang_tidak_lengkap_atau_pin_berbahaya() {
+        let mut input = base(CommandKind::AddFingerprint);
+        assert_eq!(render(&input), Err(RenderError::MissingUser));
+
+        input.user = Some(User {
+            pin: "1",
+            name: "N",
+        });
+        assert_eq!(render(&input), Err(RenderError::MissingBiometric));
+
+        input.user = Some(User {
+            pin: "1\t2",
+            name: "N",
+        });
+        input.fingerprint = Some(Fingerprint {
+            finger_index: 0,
+            size: 1,
+            template: "AA==",
+        });
+        assert_eq!(render(&input), Err(RenderError::InvalidPin));
     }
 
     #[test]

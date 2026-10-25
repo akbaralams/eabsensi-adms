@@ -10,6 +10,7 @@ pub struct Claimed {
     pub id: i64,
     pub command_type: String,
     pub employee_id: Option<i64>,
+    pub biometric_template_id: Option<i64>,
 }
 
 #[derive(Debug, Clone)]
@@ -86,7 +87,8 @@ pub async fn claim_batch(pool: &PgPool, device_id: i64) -> sqlx::Result<Vec<Clai
                     LIMIT $3
                       FOR UPDATE SKIP LOCKED) AS picked
             WHERE d.id = picked.id
-        RETURNING d.id AS "id!", d.command_type AS "command_type!", d.employee_id"#,
+        RETURNING d.id AS "id!", d.command_type AS "command_type!", d.employee_id,
+                  d.biometric_template_id"#,
         device_id,
         priority,
         batch_limit(priority)

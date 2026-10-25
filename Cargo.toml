@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+aes-gcm = { version = "0.11.1", features = ["zeroize"] }
 anyhow = "1.0.104"
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio", "json", "query", "tracing"] }
+base64 = "0.23.1"
 chrono = { version = "0.4.45", default-features = false, features = ["std", "clock"] }
 chrono-tz = "0.10.4"
 dotenvy = "0.15.7"
@@ -18,6 +20,7 @@ tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "signal",
 tower-http = { version = "0.7.1", default-features = false, features = ["timeout", "trace"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["json", "env-filter"] }
+zeroize = "1.9.1"
 
 [dev-dependencies]
 http-body-util = "0.1.5"

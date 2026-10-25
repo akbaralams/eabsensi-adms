@@ -17,6 +17,10 @@ pub struct Device {
     pub operlog_stamp: Option<String>,
     pub photo_stamp: Option<String>,
     pub biodata_stamp: Option<String>,
+    /// `~ZKFPVersion` yang dilaporkan mesin (maks 16 karakter); `None` bila belum diketahui.
+    pub fp_version: Option<String>,
+    /// `FaceVersion` yang dilaporkan mesin.
+    pub face_version: Option<String>,
 }
 
 /// Mesin terdaftar dan aktif dengan nomor seri itu. Mesin tak dikenal atau nonaktif tidak
@@ -35,7 +39,9 @@ pub async fn find_active(pool: &PgPool, serial: &str) -> sqlx::Result<Option<Dev
                   attlog_stamp,
                   operlog_stamp,
                   photo_stamp,
-                  biodata_stamp
+                  biodata_stamp,
+                  NULLIF(left(reported_options ->> '~ZKFPVersion', 16), '') AS fp_version,
+                  NULLIF(left(reported_options ->> 'FaceVersion', 16), '') AS face_version
              FROM devices
             WHERE serial_number = $1 AND is_active"#,
         serial

@@ -104,3 +104,37 @@ Dijawab **kosong** (bukan `OK`) tanpa efek apa pun. Alasannya: balasan `OK` memb
 
 ### Catatan pengujian
 Tanggal uji 2024-06 dan 2022 diasumsikan tidak berada di periode terkunci pada database uji; uji periode memakai Maret-Mei 2021 dan menghapusnya sendiri. Efek ke kehadiran harian v2 dibaca dari kode (kalkulator v2 hanya menyaring `status = approved`, bukan `source`), belum dilihat di UI v2.
+
+## Task 5b: biometrik terenkripsi (D1)
+
+### Konfigurasi
+| Variabel | Arti |
+|---|---|
+| `BIOMETRIC_KEY` | Kunci AES-256 dalam base64 (tepat 32 byte). **Tanpa kunci ini template tidak diterima dan tidak bisa dikirim**; ADMS tidak pernah menyimpan template tanpa enkripsi. Saat start ada peringatan di log. |
+| `BIOMETRIC_KEY_ID` | Id kunci terkini (1-16 karakter huruf, angka, `_`, `-`); wajib bila `BIOMETRIC_KEY` diisi. Disimpan di setiap baris (`key_id`). |
+| `BIOMETRIC_OLD_KEYS` | `id=base64,id=base64`: kunci lama yang hanya dipakai untuk membaca setelah rotasi. |
+| `BIOMETRIC_STORE_FACE_PHOTO` | `true` agar foto wajah (`BIOPHOTO`) ikut disimpan; bawaan `false` (tafsir A6/Q8). |
+
+Nilai kunci tidak pernah ikut pesan galat konfigurasi maupun `Debug`; kunci disimpan di memori sebagai `Zeroizing` dan `aes-gcm` dibangun dengan fitur `zeroize`.
+
+### Enkripsi (`src/vault.rs`)
+AES-256-GCM, nonce 12 byte acak dari CSPRNG sistem untuk tiap enkripsi, tag 16 byte. **AAD** = `employee_id|kind|finger_index|algorithm_version`, jadi ciphertext tidak dapat dipindah ke pegawai, jenis, jari, atau versi lain. Galat dekripsi sengaja tanpa rincian (kunci salah, AAD berbeda, dan data rusak tidak dibedakan). Rotasi: kunci baru dipakai untuk semua enkripsi; baris lama dibuka dengan kunci lamanya dan **dienkripsi ulang ke kunci terkini saat batch yang sama dikirim ulang** oleh mesin.
+
+### Penerimaan
+- Baris dari `POST /iclock/cdata`: `FP `/`FACE `/`BIOPHOTO ` di badan `table=OPERLOG`, serta `table=tabledata` dengan `tablename=templatev10`/`biophoto`. `OPLOG` dan `USER` tetap diabaikan (D6). `BIODATA` (firmware generasi baru) tetap hanya menyimpan stamp, seperti kode lama: template dari firmware itu **belum** diterima.
+- Hanya pegawai yang cocok persis `employee_number` yang boleh memiliki template; PIN lain dihitung dan dibuang. Satu baris per `(pegawai, jenis, jari, versi algoritma)` (`ON CONFLICT ... DO UPDATE`).
+- **Versi algoritma** diambil dari laporan mesin di `devices.reported_options` (`~ZKFPVersion`, `FaceVersion`; kosong bila belum dilaporkan). Template dari mesin versi berbeda tidak saling menimpa.
+- Template yang sama persis (dan sudah memakai kunci terkini) tidak ditulis ulang (mesin mengirim ulang batch tiap koneksi); pembandingan dilakukan setelah dekripsi di memori.
+- Satu transaksi per unggahan, stamp `OpStamp` disimpan di transaksi yang sama. Batas: 64 KiB per template, 512 KiB per foto, PIN maksimal 32 karakter; baris di luar itu dilewati dan hanya dihitung.
+- Tanpa brankas: isi dibuang, hanya stamp yang disimpan, balasan tetap `OK:<n>`.
+- Bila `BIOMETRIC_KEY` baru diisi setelah mesin terlanjur mengirim batch, template tidak masuk sampai mesin mengirim ulang batch itu (stamp OPERLOG tetap maju); tangkap lewat perintah/penarikan ulang atau daftarkan ulang di mesin.
+
+### Pengiriman ke mesin lain (`add_fingerprint`)
+Perintah v2 merujuk `employee_id` dan `biometric_template_id`. Saat `getrequest` ADMS memeriksa: brankas aktif, template ada, milik pegawai pada perintah, berjenis sidik jari, `is_valid`, dan versi algoritma cocok dengan `~ZKFPVersion` mesin tujuan (bila keduanya diketahui). Lolos: template didekripsi **hanya di titik ini** dan dikirim sebagai
+`C:<id>:DATA FP PIN=<employee_number>	FID=<nomor jari>	Size=<ukuran asli>	Valid=1	TMP=<base64>` (format kode lama). Gagal: perintah `failed` dengan alasan singkat yang aman ditampilkan di UI v2 (tanpa isi template atau rincian kunci). Hanya jenis `fingerprint` yang bisa dikirim; template wajah dan foto tersimpan tetapi belum bisa didorong ke mesin (format perintahnya belum diketahui dari acuan lama).
+
+### Tanpa isi di log
+`Debug` untuk template mentah, ciphertext, dan brankas hanya menampilkan panjang atau id kunci. Log penerimaan hanya memuat jumlah. Uji `tests/biometric_logs.rs` menangkap seluruh keluaran `tracing` (termasuk pernyataan SQL sqlx, yang hanya berisi placeholder) selama unggah, kirim ke mesin lain, dan jalur gagal (kunci salah), lalu memastikan base64/teks template, baris rusak, dan kunci tidak muncul. Uji itu sengaja di berkasnya sendiri karena penangkap log memakai subscriber thread-local yang terganggu uji paralel lain di proses yang sama.
+
+### Temuan saat menguji
+Pemangkasan spasi sebelum mengganti spasi menjadi `+` merusak template yang diawali atau diakhiri `+` (mesin mengirim `+` sebagai spasi). Diperbaiki dan diuji (`spasi_di_awal_dan_akhir_nilai_juga_tanda_plus`).

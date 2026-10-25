@@ -1,0 +1,66 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE device_commands AS d\n              SET status = 'sent',\n                  sent_at = now(),\n                  attempts = d.attempts + 1,\n                  updated_at = now() AT TIME ZONE 'UTC'\n             FROM (SELECT id\n                     FROM device_commands\n                    WHERE device_id = $1\n                      AND status = 'pending'\n                      AND priority = $2\n                      AND available_at <= now() + interval '1 second'\n                    ORDER BY id\n                    LIMIT $3\n                      FOR UPDATE SKIP LOCKED) AS picked\n            WHERE d.id = picked.id\n        RETURNING d.id AS \"id!\", d.command_type AS \"command_type!\", d.employee_id,\n                  d.biometric_template_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "device_commands",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "command_type!",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "device_commands",
+            "name": "command_type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "employee_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "device_commands",
+            "name": "employee_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "biometric_template_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "device_commands",
+            "name": "biometric_template_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int2",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "9624c3699d9d449735ac4e3b64a634276312ba94f915eb1a088a676a9b7d4296"
+}

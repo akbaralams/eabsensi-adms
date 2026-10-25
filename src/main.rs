@@ -1,7 +1,7 @@
 use anyhow::Context;
 use eabsensi_adms::config::Config;
 use eabsensi_adms::http::{self, Limits};
-use eabsensi_adms::state::{AppState, IngestRules, QueueSettings};
+use eabsensi_adms::state::{AppState, Biometrics, IngestRules, QueueSettings};
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
@@ -18,6 +18,11 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::from_env().context("konfigurasi tidak valid")?;
     tracing::info!(?config, "konfigurasi dimuat");
+    if config.vault.is_none() {
+        tracing::warn!(
+            "BIOMETRIC_KEY tidak diisi: template biometrik tidak diterima dan tidak dikirim"
+        );
+    }
 
     // Pool dibuat malas: service tetap hidup (dan `/healthz` menjawab) walau database sedang
     // tidak terjangkau; `/readyz` yang melaporkannya.
@@ -32,6 +37,7 @@ async fn main() -> anyhow::Result<()> {
             db,
             queue: QueueSettings::from(&config),
             ingest: IngestRules::from(&config),
+            biometrics: Biometrics::from(&config),
         },
         Limits::from(&config),
     );

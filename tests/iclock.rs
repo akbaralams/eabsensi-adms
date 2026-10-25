@@ -399,7 +399,7 @@ async fn getrequest_perintah_yang_tidak_bisa_dirakit_ditandai_gagal() {
     for (id, fragment) in [
         (without_employee, "pegawai"),
         (invalid_pin, "PIN"),
-        (fingerprint, "belum didukung"),
+        (fingerprint, "kunci biometrik"),
     ] {
         let row = device.command_row(&pool, id).await;
         assert_eq!(row.status, "failed", "perintah {id}");

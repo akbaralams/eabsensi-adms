@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO biometric_templates\n                  (employee_id, kind, finger_index, algorithm_version, is_valid, original_size,\n                   ciphertext, nonce, key_id, source_device_id, created_at, updated_at)\n           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,\n                   now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')\n      ON CONFLICT (employee_id, kind, finger_index, algorithm_version)\n        DO UPDATE SET is_valid         = EXCLUDED.is_valid,\n                      original_size    = EXCLUDED.original_size,\n                      ciphertext       = EXCLUDED.ciphertext,\n                      nonce            = EXCLUDED.nonce,\n                      key_id           = EXCLUDED.key_id,\n                      source_device_id = EXCLUDED.source_device_id,\n                      updated_at       = now() AT TIME ZONE 'UTC'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar",
+        "Int2",
+        "Varchar",
+        "Bool",
+        "Int4",
+        "Bytea",
+        "Bytea",
+        "Varchar",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e2778a108bb44f6563e93821e56e6961c62eb9cf26d1b4df7d20786e63fbfc6c"
+}

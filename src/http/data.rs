@@ -20,7 +20,9 @@ use super::iclock::{AppError, empty, plain, serial_of, zone_of};
 use crate::db::commands;
 use crate::db::devices::{self, Stamp};
 use crate::ingest;
+use crate::ingest::biometrics as bio_ingest;
 use crate::protocol::attlog::{self, Upload};
+use crate::protocol::biometric;
 use crate::protocol::command::CommandKind;
 use crate::protocol::info::{self, DeviceInfo};
 use crate::protocol::kv;
@@ -39,6 +41,7 @@ pub struct UploadQuery {
     op_stamp: Option<String>,
     #[serde(rename = "PhotoStamp")]
     photo_stamp: Option<String>,
+    tablename: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -117,12 +120,26 @@ pub async fn upload(
             .await?;
             Ok(plain("OK"))
         }
-        // Biometrik (tabledata, FP/FACE) menyusul di Task 5b; OPLOG diabaikan (D6).
-        Upload::TableData | Upload::Unknown => Ok(plain(session::render_upload_ok(0))),
-        Upload::Operation => {
-            if let Some(stamp) = stamp_of(query.op_stamp.as_ref()) {
-                devices::set_stamp(&state.db, device.id, Stamp::OperLog, stamp).await?;
+        Upload::TableData => {
+            if matches!(query.tablename.as_deref(), Some("templatev10" | "biophoto")) {
+                let parsed = biometric::parse_tabledata(
+                    query.tablename.as_deref().unwrap_or_default(),
+                    &text,
+                );
+                receive_biometrics(&state, &device, &serial, parsed, None).await?;
             }
+            Ok(plain(session::render_upload_ok(0)))
+        }
+        Upload::Unknown => Ok(plain(session::render_upload_ok(0))),
+        Upload::Operation => {
+            // OPLOG dan USER diabaikan (D6); baris FP/FACE/BIOPHOTO disimpan terenkripsi (D1).
+            let stamp = stamp_of(query.op_stamp.as_ref()).map(|value| (Stamp::OperLog, value));
+            let parsed = if state.biometrics.vault.is_some() {
+                biometric::parse_operlog(&text)
+            } else {
+                biometric::Parsed::default()
+            };
+            receive_biometrics(&state, &device, &serial, parsed, stamp).await?;
             Ok(plain(session::render_upload_ok(non_empty_lines(&text))))
         }
         Upload::Biodata => {
@@ -331,4 +348,52 @@ fn is_token(value: &str) -> bool {
         && value
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
+/// Menyimpan template dari satu unggahan (bila brankas aktif) dan stamp-nya di transaksi yang sama.
+/// Tanpa brankas, isi template dibuang (tidak pernah disimpan tanpa enkripsi) dan hanya stamp yang
+/// disimpan. Log hanya memuat jumlah.
+async fn receive_biometrics(
+    state: &AppState,
+    device: &devices::Device,
+    serial: &str,
+    parsed: biometric::Parsed,
+    stamp: Option<(Stamp, &str)>,
+) -> Result<(), AppError> {
+    let biometric::Parsed { rows, skipped, .. } = parsed;
+
+    let Some(vault) = state.biometrics.vault.as_ref() else {
+        if let Some((kind, value)) = stamp {
+            devices::set_stamp(&state.db, device.id, kind, value).await?;
+        }
+        return Ok(());
+    };
+    if rows.is_empty() && stamp.is_none() {
+        return Ok(());
+    }
+
+    let received = rows.len();
+    let summary = bio_ingest::ingest_templates(
+        &state.db,
+        device,
+        vault,
+        state.biometrics.store_face_photo,
+        rows,
+        stamp,
+    )
+    .await?;
+
+    if received > 0 || skipped > 0 {
+        tracing::info!(
+            serial = %serial,
+            diterima = received,
+            tersimpan = summary.stored,
+            tidak_berubah = summary.unchanged,
+            pin_tak_dikenal = summary.unknown_pin,
+            foto_diabaikan = summary.photos_ignored,
+            dilewati = skipped,
+            "template biometrik diproses"
+        );
+    }
+    Ok(())
 }

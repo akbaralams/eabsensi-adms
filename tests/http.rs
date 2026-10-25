@@ -8,7 +8,7 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::post;
 use eabsensi_adms::http::{self, Limits};
-use eabsensi_adms::state::{AppState, IngestRules, QueueSettings};
+use eabsensi_adms::state::{AppState, Biometrics, IngestRules, QueueSettings};
 use http_body_util::BodyExt;
 use sqlx::postgres::PgPoolOptions;
 use tower::ServiceExt;
@@ -46,6 +46,7 @@ fn state_with(db: sqlx::PgPool) -> AppState {
             ack_timeout: Duration::from_secs(120),
             max_attempts: 3,
         },
+        biometrics: Biometrics::disabled(),
         ingest: IngestRules {
             attendance_zone: chrono_tz::Asia::Jakarta,
             min_device_time: chrono::NaiveDate::from_ymd_opt(2020, 1, 1)

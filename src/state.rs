@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::NaiveDateTime;
@@ -6,6 +7,7 @@ use chrono_tz::Tz;
 use sqlx::PgPool;
 
 use crate::config::Config;
+use crate::vault::Vault;
 
 /// Aturan antrean perintah ke mesin.
 #[derive(Debug, Clone, Copy)]
@@ -46,10 +48,37 @@ impl From<&Config> for IngestRules {
     }
 }
 
+/// Pengaturan biometrik (D1). Tanpa brankas, template tidak diterima dan tidak bisa dikirim.
+#[derive(Debug, Clone)]
+pub struct Biometrics {
+    pub vault: Option<Arc<Vault>>,
+    /// Simpan juga foto wajah (`BIOPHOTO`).
+    pub store_face_photo: bool,
+}
+
+impl Biometrics {
+    pub fn disabled() -> Self {
+        Self {
+            vault: None,
+            store_face_photo: false,
+        }
+    }
+}
+
+impl From<&Config> for Biometrics {
+    fn from(config: &Config) -> Self {
+        Self {
+            vault: config.vault.clone(),
+            store_face_photo: config.store_face_photo,
+        }
+    }
+}
+
 /// Dipakai bersama oleh semua handler. Murah di-clone (pool dibagi lewat `Arc` di dalam sqlx).
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
     pub queue: QueueSettings,
     pub ingest: IngestRules,
+    pub biometrics: Biometrics,
 }

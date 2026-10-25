@@ -7,7 +7,7 @@ Urutan wajib. Tiap task selesai bila kriteria "Selesai bila" terpenuhi dan sudah
 - Pasang `sqlx-cli` terbaru (fitur postgres).
 - **Selesai bila**: versi `cargo`, `rustc`, `sqlx` tercatat di README.
 
-## [ ] Task 1. Analisis acuan lama
+## [x] Task 1. Analisis acuan lama
 Baca `../eabsensi-99` secara menyeluruh dan tulis `docs/legacy-analysis.md`:
 - Setiap endpoint `iclock/*`: request yang dikirim mesin (query string, header `User-Agent`, body), balasan persis, dan efek ke database.
 - Alur handshake (`cdata` GET dengan `options`), stamp (`Stamp`, `OpStamp`, `PhotoStamp`), opsi (`Delay`, `ErrorDelay`, `TransInterval`, `TransFlag`, `Realtime`, dst.), registrasi mesin baru (`DeviceTemp`, `registry`), antrean perintah (`CommandList`, `CommandsUser`, format `C:<id>:<perintah>`, hasil di `devicecmd`), unggah log (`ATTLOG`, `OPERLOG`, foto), `push`/`ping`/`rtdata`/`querydata`.

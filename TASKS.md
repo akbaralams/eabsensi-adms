@@ -16,7 +16,7 @@ Baca `../eabsensi-99` secara menyeluruh dan tulis `docs/legacy-analysis.md`:
 - Bug, celah keamanan, dan kebiasaan firmware yang ditangani kode lama.
 - **Selesai bila**: dokumen lengkap untuk semua endpoint dan tabel, dengan contoh payload nyata; daftar fitur ditandai "pertahankan / buang / perlu keputusan".
 
-## [ ] Task 2. Usulan skema v2 dan keputusan fitur
+## [x] Task 2. Usulan skema v2 dan keputusan fitur
 - Tanyakan ke user setiap fitur berlabel "perlu keputusan" (mis. sinkron sidik jari dan data biometrik, transaksi mencurigakan dan notifikasinya, area/penugasan mesin, pendaftaran otomatis mesin baru, aturan punch ke bulan yang sudah ditutup, status punch mesin langsung `approved` atau tidak).
 - Tulis `docs/schema-proposal.md`: tabel baru dengan nama netral snake_case, FK + index eksplisit, kunci unik idempotensi log, pemetaan PIN mesin ke `employees.employee_number`, kasus enum `PunchSource::Device`, dan data apa yang ditulis ke `attendance_punches`.
 - Serahkan ke sesi `eabsensi-v2` untuk dibuat sebagai migration + UI kelola mesin (di repo itu, bukan di sini). Repo ini menunggu sampai migration ter-merge dan dump skema diperbarui.

@@ -1,6 +1,6 @@
 # Usulan skema v2 dan keputusan fitur (Task 2)
 
-Dibuat: 25 Oktober 2026. Status: **usulan, menunggu persetujuan user**; belum diserahkan ke `eabsensi-v2`.
+Dibuat: 25 Oktober 2026. Status: **disetujui user (25 Oktober 2026)**, termasuk default A1-A6 dan usulan Q1-Q8; brief serah-terima ada di [v2-handoff-brief.md](v2-handoff-brief.md). Penyesuaian saat persetujuan: A6/Q8, foto wajah (`face_photo`) hanya disimpan bila `BIOMETRIC_STORE_FACE_PHOTO=true` (default `false`). Q5-Q7 ditunda ke Task 7 / keputusan kebijakan. Menunggu migration di `eabsensi-v2`.
 Dasar: [legacy-analysis.md](legacy-analysis.md) (bagian 9 memuat 27 fitur berlabel) dan skema v2 di `../eabsensi-v2/database/dumps/pgsql-schema.sql`.
 
 Repo ini **tidak** punya migration. Semua tabel di bawah dibuat sebagai migration + UI kelola mesin di `eabsensi-v2` (sesi terpisah), lalu dump skema diperbarui dan `SCHEMA_VERSION` di sini dinaikkan.

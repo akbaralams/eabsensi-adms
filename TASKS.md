@@ -22,7 +22,7 @@ Baca `../eabsensi-99` secara menyeluruh dan tulis `docs/legacy-analysis.md`:
 - Serahkan ke sesi `eabsensi-v2` untuk dibuat sebagai migration + UI kelola mesin (di repo itu, bukan di sini). Repo ini menunggu sampai migration ter-merge dan dump skema diperbarui.
 - **Selesai bila**: keputusan user tercatat, usulan skema disetujui, dan `SCHEMA_VERSION` menunjuk dump yang sudah berisi tabel mesin.
 
-## [ ] Task 3. Kerangka service
+## [x] Task 3. Kerangka service
 - Crate biner `eabsensi-adms`: axum + tokio (versi terbaru), sqlx (postgres, offline), tracing log JSON, config dari env, `/healthz`, port sendiri (terpisah dari web dan API mobile), batas ukuran body, timeout.
 - CI GitHub Actions: Postgres, muat dump skema, `cargo sqlx prepare --check`, fmt, clippy, test.
 - **Selesai bila**: `cargo run` melayani `/healthz`; CI hijau.

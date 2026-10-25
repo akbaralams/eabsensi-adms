@@ -340,6 +340,7 @@ dependencies = [
  "chrono-tz",
  "dotenvy",
  "http-body-util",
+ "rand",
  "serde",
  "serde_json",
  "sqlx",

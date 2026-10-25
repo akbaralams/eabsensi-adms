@@ -1,5 +1,6 @@
 //! Lapisan HTTP. Parser protokol sengaja dipisah dari sini (dikerjakan di task berikutnya).
 
+mod data;
 mod health;
 mod iclock;
 
@@ -36,9 +37,15 @@ pub fn router(state: AppState, limits: Limits) -> Router {
     let routes = Router::new()
         .route("/healthz", get(health::healthz))
         .route("/readyz", get(health::readyz))
-        .route("/iclock/cdata", get(iclock::connect))
+        .route("/iclock/cdata", get(iclock::connect).post(data::upload))
         .route("/iclock/getrequest", get(iclock::poll))
         .route("/iclock/devicecmd", post(iclock::command_result))
+        .route("/iclock/fdata", post(data::photo))
+        .route("/iclock/registry", post(data::registry))
+        .route("/iclock/push", post(data::push))
+        .route("/iclock/ping", get(data::ping))
+        .route("/iclock/rtdata", get(data::realtime))
+        .route("/iclock/querydata", post(data::query_data))
         .with_state(state);
 
     apply_limits(routes, limits)

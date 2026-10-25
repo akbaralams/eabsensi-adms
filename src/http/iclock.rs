@@ -65,7 +65,7 @@ impl IntoResponse for AppError {
     }
 }
 
-fn reply(content_type: &'static str, body: impl Into<String>) -> Response {
+pub(super) fn reply(content_type: &'static str, body: impl Into<String>) -> Response {
     (
         [(header::CONTENT_TYPE, HeaderValue::from_static(content_type))],
         body.into(),
@@ -73,16 +73,16 @@ fn reply(content_type: &'static str, body: impl Into<String>) -> Response {
         .into_response()
 }
 
-fn plain(body: impl Into<String>) -> Response {
+pub(super) fn plain(body: impl Into<String>) -> Response {
     reply(PLAIN, body)
 }
 
-fn empty() -> Response {
+pub(super) fn empty() -> Response {
     reply(EMPTY, "")
 }
 
 /// Kode lama hanya melayani klien dengan `User-Agent` mengandung `iClock`.
-fn is_iclock(headers: &HeaderMap) -> bool {
+pub(super) fn is_iclock(headers: &HeaderMap) -> bool {
     headers
         .get(header::USER_AGENT)
         .and_then(|value| value.to_str().ok())
@@ -90,14 +90,14 @@ fn is_iclock(headers: &HeaderMap) -> bool {
 }
 
 /// Nomor seri dari query bila request tampak datang dari mesin.
-fn serial_of(headers: &HeaderMap, sn: Option<&String>) -> Option<String> {
+pub(super) fn serial_of(headers: &HeaderMap, sn: Option<&String>) -> Option<String> {
     let serial = sn
         .map(|value| value.trim())
         .filter(|value| !value.is_empty())?;
     is_iclock(headers).then(|| serial.to_owned())
 }
 
-fn zone_of(device: &devices::Device) -> Tz {
+pub(super) fn zone_of(device: &devices::Device) -> Tz {
     device.timezone.parse().unwrap_or_else(|_| {
         tracing::warn!(serial = %device.serial_number, zona = %device.timezone, "zona waktu mesin tidak valid, memakai Asia/Jakarta");
         DEFAULT_ZONE

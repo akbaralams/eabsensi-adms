@@ -1,0 +1,140 @@
+{
+  "description": "Kasus uji bersama penentuan outcome log mentah mesin (DeviceLogOutcome). Dipakai test Laravel (ReprocessDeviceLog) dan test Rust di eabsensi-adms (penerimaan ATTLOG). Mengubah aturan berarti mengubah berkas ini di kedua repo lewat PR pasangan. Sumber aturan: eabsensi-adms docs/schema-proposal.md bagian 4 langkah 5-6.",
+  "rules": [
+    "1. device_time (waktu lokal mentah mesin) < config.min_device_time -> out_of_range; pegawai tidak dicari.",
+    "2. Tidak ada employees.employee_number yang sama persis dengan pin (tanpa trim/padding) -> unknown_pin.",
+    "3. Pegawai ada tetapi is_active = false -> employee_inactive.",
+    "4. Bulan punched_at di zona config.timezone berstatus bukan open (closing atau closed) -> period_closed.",
+    "5. Sudah ada attendance_punches berstatus approved dengan employee_id dan punched_at yang sama -> duplicate.",
+    "6. Selain itu -> punched: buat attendance_punches (source=device, status=approved, kolom lain NULL) dan isi punch_id.",
+    "employee_linked: device_logs.employee_id terisi untuk outcome employee_inactive, period_closed, duplicate, punched; NULL untuk out_of_range dan unknown_pin.",
+    "is_suspect tidak memengaruhi outcome (D4b)."
+  ],
+  "config": {
+    "timezone": "Asia/Jakarta",
+    "min_device_time": "2020-01-01 00:00:00"
+  },
+  "fixtures": {
+    "employees": [
+      { "employee_number": "E100", "is_active": true },
+      { "employee_number": "E200", "is_active": false },
+      { "employee_number": "123", "is_active": true }
+    ]
+  },
+  "cases": [
+    {
+      "name": "pegawai aktif, periode terbuka",
+      "given": { "device_timezone": "Asia/Jakarta", "pin": "E100", "device_time": "2026-08-03 07:55:00" },
+      "expect": { "outcome": "punched", "punch_created": true, "employee_linked": true, "punched_at_utc": "2026-08-03 00:55:00" }
+    },
+    {
+      "name": "batas bawah waktu persis diterima",
+      "given": { "device_timezone": "Asia/Jakarta", "pin": "E100", "device_time": "2020-01-01 00:00:00" },
+      "expect": { "outcome": "punched", "punch_created": true, "employee_linked": true, "punched_at_utc": "2019-12-31 17:00:00" }
+    },
+    {
+      "name": "waktu sebelum batas bawah",
+      "given": { "device_timezone": "Asia/Jakarta", "pin": "E100", "device_time": "2019-12-31 23:59:59" },
+      "expect": { "outcome": "out_of_range", "punch_created": false, "employee_linked": false }
+    },
+    {
+      "name": "waktu sebelum batas bawah menang atas PIN tidak dikenal",
+      "given": { "device_timezone": "Asia/Jakarta", "pin": "TIDAKADA", "device_time": "2001-01-01 08:00:00" },
+      "expect": { "outcome": "out_of_range", "punch_created": false, "employee_linked": false }
+    },
+    {
+      "name": "PIN tidak dikenal",
+      "given": { "device_timezone": "Asia/Jakarta", "pin": "E999", "device_time": "2026-08-03 07:55:00" },
+      "expect": { "outcome": "unknown_pin", "punch_created": false, "employee_linked": false }
+    },
+    {
+      "name": "PIN dengan nol di depan tidak sama dengan nomor pegawai tanpa nol",
+      "given": { "device_timezone": "Asia/Jakarta", "pin": "0123", "device_time": "2026-08-03 07:55:00" },
+      "expect": { "outcome": "unknown_pin", "punch_created": false, "employee_linked": false }
+    },
+    {
+      "name": "PIN dengan spasi tidak di-trim",
+      "given": { "device_timezone": "Asia/Jakarta", "pin": "E100 ", "device_time": "2026-08-03 07:55:00" },
+      "expect": { "outcome": "unknown_pin", "punch_created": false, "employee_linked": false }
+    },
+    {
+      "name": "pegawai nonaktif",
+      "given": { "device_timezone": "Asia/Jakarta", "pin": "E200", "device_time": "2026-08-03 07:55:00" },
+      "expect": { "outcome": "employee_inactive", "punch_created": false, "employee_linked": true }
+    },
+    {
+      "name": "pegawai nonaktif menang atas periode tertutup",
+      "given": {
+        "device_timezone": "Asia/Jakarta", "pin": "E200", "device_time": "2026-08-03 07:55:00",
+        "periods": [{ "month": "2026-08", "status": "closed" }]
+      },
+      "expect": { "outcome": "employee_inactive", "punch_created": false, "employee_linked": true }
+    },
+    {
+      "name": "periode ditutup",
+      "given": {
+        "device_timezone": "Asia/Jakarta", "pin": "E100", "device_time": "2026-08-03 07:55:00",
+        "periods": [{ "month": "2026-08", "status": "closed" }]
+      },
+      "expect": { "outcome": "period_closed", "punch_created": false, "employee_linked": true }
+    },
+    {
+      "name": "periode sedang ditutup (closing) juga terkunci",
+      "given": {
+        "device_timezone": "Asia/Jakarta", "pin": "E100", "device_time": "2026-08-03 07:55:00",
+        "periods": [{ "month": "2026-08", "status": "closing" }]
+      },
+      "expect": { "outcome": "period_closed", "punch_created": false, "employee_linked": true }
+    },
+    {
+      "name": "periode dibuka kembali (open) tidak terkunci",
+      "given": {
+        "device_timezone": "Asia/Jakarta", "pin": "E100", "device_time": "2026-08-03 07:55:00",
+        "periods": [{ "month": "2026-08", "status": "open" }]
+      },
+      "expect": { "outcome": "punched", "punch_created": true, "employee_linked": true, "punched_at_utc": "2026-08-03 00:55:00" }
+    },
+    {
+      "name": "bulan ditentukan di zona bisnis, bukan zona mesin",
+      "given": {
+        "device_timezone": "Asia/Jayapura", "pin": "E100", "device_time": "2026-09-01 01:00:00",
+        "periods": [{ "month": "2026-08", "status": "closed" }]
+      },
+      "expect": { "outcome": "period_closed", "punch_created": false, "employee_linked": true }
+    },
+    {
+      "name": "zona mesin dipakai untuk konversi ke UTC",
+      "given": { "device_timezone": "Asia/Makassar", "pin": "E100", "device_time": "2026-08-03 08:00:00" },
+      "expect": { "outcome": "punched", "punch_created": true, "employee_linked": true, "punched_at_utc": "2026-08-03 00:00:00" }
+    },
+    {
+      "name": "dua mesin pada waktu yang sama: yang kedua duplikat",
+      "given": {
+        "device_timezone": "Asia/Jakarta", "pin": "E100", "device_time": "2026-08-03 07:55:00",
+        "existing_punches": [{ "employee_number": "E100", "punched_at_utc": "2026-08-03 00:55:00", "status": "approved", "source": "device" }]
+      },
+      "expect": { "outcome": "duplicate", "punch_created": false, "employee_linked": true }
+    },
+    {
+      "name": "punch yang sama tetapi masih pending bukan duplikat",
+      "given": {
+        "device_timezone": "Asia/Jakarta", "pin": "E100", "device_time": "2026-08-03 07:55:00",
+        "existing_punches": [{ "employee_number": "E100", "punched_at_utc": "2026-08-03 00:55:00", "status": "pending", "source": "mobile" }]
+      },
+      "expect": { "outcome": "punched", "punch_created": true, "employee_linked": true, "punched_at_utc": "2026-08-03 00:55:00" }
+    },
+    {
+      "name": "selisih satu detik bukan duplikat",
+      "given": {
+        "device_timezone": "Asia/Jakarta", "pin": "E100", "device_time": "2026-08-03 07:55:01",
+        "existing_punches": [{ "employee_number": "E100", "punched_at_utc": "2026-08-03 00:55:00", "status": "approved", "source": "device" }]
+      },
+      "expect": { "outcome": "punched", "punch_created": true, "employee_linked": true, "punched_at_utc": "2026-08-03 00:55:01" }
+    },
+    {
+      "name": "log mencurigakan tetap menjadi punch",
+      "given": { "device_timezone": "Asia/Jakarta", "pin": "E100", "device_time": "2026-08-03 07:55:00", "is_suspect": true },
+      "expect": { "outcome": "punched", "punch_created": true, "employee_linked": true, "punched_at_utc": "2026-08-03 00:55:00" }
+    }
+  ]
+}

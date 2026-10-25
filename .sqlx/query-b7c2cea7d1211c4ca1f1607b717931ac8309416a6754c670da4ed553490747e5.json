@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT year, month FROM periods WHERE status <> 'open'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "year",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "periods",
+            "name": "year"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "month",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "periods",
+            "name": "month"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "b7c2cea7d1211c4ca1f1607b717931ac8309416a6754c670da4ed553490747e5"
+}

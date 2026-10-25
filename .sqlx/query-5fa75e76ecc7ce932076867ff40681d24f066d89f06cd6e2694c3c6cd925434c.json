@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE devices SET operlog_stamp = $2, updated_at = now() AT TIME ZONE 'UTC'\n                    WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5fa75e76ecc7ce932076867ff40681d24f066d89f06cd6e2694c3c6cd925434c"
+}

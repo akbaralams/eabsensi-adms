@@ -1,7 +1,7 @@
 use anyhow::Context;
 use eabsensi_adms::config::Config;
 use eabsensi_adms::http::{self, Limits};
-use eabsensi_adms::state::{AppState, QueueSettings};
+use eabsensi_adms::state::{AppState, IngestRules, QueueSettings};
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
@@ -31,6 +31,7 @@ async fn main() -> anyhow::Result<()> {
         AppState {
             db,
             queue: QueueSettings::from(&config),
+            ingest: IngestRules::from(&config),
         },
         Limits::from(&config),
     );
@@ -40,10 +41,13 @@ async fn main() -> anyhow::Result<()> {
         .with_context(|| format!("gagal membuka {}", config.bind_addr))?;
     tracing::info!(addr = %config.bind_addr, "eabsensi-adms melayani");
 
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .context("server berhenti dengan galat")?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
+    .context("server berhenti dengan galat")?;
 
     tracing::info!("eabsensi-adms berhenti");
     Ok(())

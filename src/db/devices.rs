@@ -133,3 +133,122 @@ pub async fn update_info(
     .await?;
     Ok(())
 }
+
+/// Stamp yang dikembalikan di handshake agar mesin tidak mengirim ulang data yang sudah diterima.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Stamp {
+    AttLog,
+    OperLog,
+    Photo,
+    Biodata,
+}
+
+/// Menyimpan stamp persis seperti dikirim mesin (bukan dihitung server).
+pub async fn set_stamp(
+    executor: impl sqlx::PgExecutor<'_>,
+    device_id: i64,
+    kind: Stamp,
+    value: &str,
+) -> sqlx::Result<()> {
+    match kind {
+        Stamp::AttLog => {
+            sqlx::query!(
+                r#"UPDATE devices SET attlog_stamp = $2, updated_at = now() AT TIME ZONE 'UTC'
+                    WHERE id = $1"#,
+                device_id,
+                value
+            )
+            .execute(executor)
+            .await?;
+        }
+        Stamp::OperLog => {
+            sqlx::query!(
+                r#"UPDATE devices SET operlog_stamp = $2, updated_at = now() AT TIME ZONE 'UTC'
+                    WHERE id = $1"#,
+                device_id,
+                value
+            )
+            .execute(executor)
+            .await?;
+        }
+        Stamp::Photo => {
+            sqlx::query!(
+                r#"UPDATE devices SET photo_stamp = $2, updated_at = now() AT TIME ZONE 'UTC'
+                    WHERE id = $1"#,
+                device_id,
+                value
+            )
+            .execute(executor)
+            .await?;
+        }
+        Stamp::Biodata => {
+            sqlx::query!(
+                r#"UPDATE devices SET biodata_stamp = $2, updated_at = now() AT TIME ZONE 'UTC'
+                    WHERE id = $1"#,
+                device_id,
+                value
+            )
+            .execute(executor)
+            .await?;
+        }
+    }
+    Ok(())
+}
+
+pub async fn set_device_type(pool: &PgPool, device_id: i64, device_type: &str) -> sqlx::Result<()> {
+    sqlx::query!(
+        r#"UPDATE devices
+              SET device_type = $2, updated_at = now() AT TIME ZONE 'UTC'
+            WHERE id = $1 AND device_type <> $2"#,
+        device_id,
+        device_type
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Kode registrasi yang sudah ada dipertahankan; bila belum ada, `candidate` disimpan.
+pub async fn ensure_registry_code(
+    pool: &PgPool,
+    device_id: i64,
+    candidate: &str,
+) -> sqlx::Result<String> {
+    let code = sqlx::query_scalar!(
+        r#"UPDATE devices
+              SET registry_code = COALESCE(registry_code, $2),
+                  updated_at = now() AT TIME ZONE 'UTC'
+            WHERE id = $1
+        RETURNING registry_code AS "registry_code!""#,
+        device_id,
+        candidate
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok(code)
+}
+
+/// Jumlah data di mesin dari `querydata?type=count` (`user`, `templatev10`, `biophoto`).
+pub async fn update_counts(
+    pool: &PgPool,
+    device_id: i64,
+    user_count: Option<i32>,
+    fingerprint_count: Option<i32>,
+    face_count: Option<i32>,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        r#"UPDATE devices
+              SET user_count        = COALESCE($2, user_count),
+                  fingerprint_count = COALESCE($3, fingerprint_count),
+                  face_count        = COALESCE($4, face_count),
+                  updated_at        = now() AT TIME ZONE 'UTC'
+            WHERE id = $1"#,
+        device_id,
+        user_count,
+        fingerprint_count,
+        face_count
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}

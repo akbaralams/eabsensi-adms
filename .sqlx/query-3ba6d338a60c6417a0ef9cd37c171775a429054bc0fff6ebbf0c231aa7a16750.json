@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE devices SET biodata_stamp = $2, updated_at = now() AT TIME ZONE 'UTC'\n                    WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3ba6d338a60c6417a0ef9cd37c171775a429054bc0fff6ebbf0c231aa7a16750"
+}

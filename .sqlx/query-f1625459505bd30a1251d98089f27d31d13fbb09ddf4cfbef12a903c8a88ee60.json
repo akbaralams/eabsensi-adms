@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE devices\n              SET user_count        = COALESCE($2, user_count),\n                  fingerprint_count = COALESCE($3, fingerprint_count),\n                  face_count        = COALESCE($4, face_count),\n                  updated_at        = now() AT TIME ZONE 'UTC'\n            WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f1625459505bd30a1251d98089f27d31d13fbb09ddf4cfbef12a903c8a88ee60"
+}

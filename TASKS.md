@@ -31,7 +31,7 @@ Baca `../eabsensi-99` secara menyeluruh dan tulis `docs/legacy-analysis.md`:
 - `GET /iclock/cdata` (opsi per mesin), `GET /iclock/getrequest` (kirim perintah tertunda), `POST /iclock/devicecmd` (catat hasil), heartbeat/`last_seen_at`, perlakuan mesin tak dikenal sesuai keputusan Task 2.
 - **Selesai bila**: balasan byte-per-byte cocok dengan acuan lama untuk payload contoh dari Task 1 (test unit + integrasi).
 
-## [ ] Task 5. Penerimaan log
+## [x] Task 5. Penerimaan log
 - `POST /iclock/cdata` `table=ATTLOG` (dan `OPERLOG` sesuai keputusan): parse, simpan log mentah idempoten, petakan PIN ke pegawai, tulis `attendance_punches` (`source=device`), simpan log yang PIN-nya tidak dikenal untuk ditinjau di web.
 - Endpoint lain (`fdata`, `registry`, `push`, `ping`, `rtdata`, `querydata`) sesuai keputusan Task 2.
 - **Selesai bila**: kiriman ulang batch yang sama tidak menambah punch; punch muncul di kehadiran harian web v2.

@@ -53,3 +53,54 @@ Catatan `set_time`: kode lama membuat dua perintah terpisah (id berbeda); skema 
 
 ### Pengujian
 Role Postgres dev (`absensi_dev`) tidak punya `CREATEDB`, jadi `#[sqlx::test]` tidak dipakai. Uji integrasi (`tests/iclock.rs`) membuat mesin dan pegawai bernama unik (`TEST-ADMS-…`, departemen "Departemen uji ADMS") di database yang sama dan menghapusnya sendiri; sisa uji yang gagal disapu bila lebih tua dari satu jam. Pool tiap uji dibatasi 2 koneksi agar uji paralel tidak menghabiskan `max_connections`.
+
+## Task 5: penerimaan log dan endpoint pendamping
+
+### Alur `POST /iclock/cdata`
+Jenis unggahan dipilah menurut `table` dengan urutan `idata` lama (`protocol::attlog::classify`). Hanya `ATTLOG` (atau `Stamp` tanpa `table`) yang menghasilkan data:
+
+| Unggahan | Efek | Balasan |
+|---|---|---|
+| `ATTLOG` / `Stamp` | log mentah + punch (di bawah); `attlog_stamp` = `Stamp` | `OK:<n>\n` |
+| `OPERLOG`/`USERINFO`/`FINGERTMP`/`OpStamp` | hanya `operlog_stamp` = `OpStamp` (OPLOG diabaikan, D6; FP/FACE menunggu Task 5b) | `OK:<n>\n` |
+| `BIODATA` | hanya `biodata_stamp` = `Stamp` | `OK\n` |
+| `ATTPHOTO` / `PhotoStamp` | hanya `photo_stamp` (foto diabaikan, D7) | `OK\n` |
+| `rtstate`, `rtlog` | tidak ada (D7) | `OK` |
+| `options` | info perangkat (badan dipisah koma) | `OK` |
+| `tabledata` | tidak ada (biometrik menyusul di Task 5b) | `OK\n` |
+| selain itu | tidak ada | `OK\n` |
+
+`<n>` = jumlah baris tak kosong di badan, **termasuk baris rusak** (agar mesin tidak macet mengirim ulang baris yang tak pernah bisa diproses). Kode lama menghitung juga elemen kosong di ujung badan (selisih satu); mesin tidak bergantung pada angka itu sejauh diketahui, belum dibuktikan pada firmware.
+
+Stamp yang dikembalikan di handshake adalah **stamp yang dikirim mesin** (hanya angka, maksimal 20 digit; selain itu diabaikan), disimpan pada transaksi yang sama dengan datanya sehingga tidak pernah maju mendahului data. Apakah ini menghentikan pengiriman ulang batch yang sama oleh firmware masih hipotesis (legacy-analysis 2.2); uji dengan simulator/mesin.
+
+### Penerimaan satu batch ATTLOG (`ingest::ingest_attlog`)
+Satu transaksi per batch; galat database membatalkan semuanya dan dijawab 500 (mesin tidak mendapat `OK`, jadi mengirim ulang):
+
+1. Penguraian murni (`parse_attlog`): `PIN \t waktu \t status \t verifikasi \t ...`; PIN dipakai apa adanya (maks 32 karakter, tanpa trim dan padding, D9); baris rusak (tanpa waktu, PIN kosong/terlalu panjang, waktu tak terbaca, atau waktu di celah DST) dilewati dan dicatat tanpa isi baris.
+2. Waktu lokal mesin → UTC memakai `devices.timezone`.
+3. **Penyaringan kiriman ulang dengan satu query** (`UNNEST` terhadap kunci `(device_id, pin, device_time)`), sehingga batch lama yang dikirim ulang tiap koneksi tidak memicu query per baris. `INSERT ... ON CONFLICT DO NOTHING` tetap menjaga kiriman bersamaan dan baris kembar di batch yang sama.
+4. Pegawai (cocok persis `employee_number`) dan periode terkunci diambil sekali per batch; keputusan outcome memakai fungsi murni `ingest::outcome::evaluate` (urutan: `out_of_range`, `unknown_pin`, `employee_inactive`, `period_closed`, `duplicate`, `punched`). Hanya pemeriksaan duplikat yang butuh query per baris yang lolos sampai tahap itu.
+5. Log mentah disimpan dengan outcome-nya (PIN tak dikenal ikut disimpan, `employee_id` kosong); bila `punched`, punch (`source=device`, `status=approved`, kolom lain kosong) dibuat dan ditautkan lewat `punch_id`. `is_suspect` = `punched_at` lebih dari `ADMS_SUSPECT_FUTURE_SECS` (500) di depan waktu terima; tidak memengaruhi outcome (D4b).
+6. `source_ip` = alamat soket klien (belakang proxy akan berisi alamat proxy; `X-Forwarded-For` belum dipakai).
+
+Hasil ukur (uji `batch_besar...`, Postgres lokal): 2.000 baris baru ≈ 2,4 detik dalam satu transaksi; kiriman ulang batch yang sama ≈ 36 ms. Belum ada batas jumlah baris per request selain batas ukuran badan (`ADMS_MAX_BODY_BYTES`) dan timeout 30 detik.
+
+### Kasus uji bersama dengan v2
+`tests/fixtures/outcome-cases.json` adalah salinan **persis** dari `eabsensi-v2/tests/contract/adms/outcome-cases.json` (18 kasus); `tests/outcome_cases.rs` menjalankannya terhadap `evaluate`. Ubah hanya lewat PR pasangan di kedua repo. Uji integrasi `tests/ingest.rs` memeriksa hal yang sama lewat database (outcome, penautan pegawai/punch, periode `closed`/`closing`/`open`).
+
+### Mesin tak terdaftar atau nonaktif pada unggahan
+Dijawab **kosong** (bukan `OK`) tanpa efek apa pun. Alasannya: balasan `OK` membuat mesin menganggap datanya terkirim dan membuangnya, sehingga absensi mesin yang baru didaftarkan operator akan hilang. Dengan balasan kosong mesin menyimpan data dan mengirim ulang setelah terdaftar. (Kode lama membalas `OK:n` dan membuang datanya.) **Asumsi perilaku firmware belum diuji**: bila firmware ternyata membuang data pada balasan non-OK atau berhenti mencoba, ubah menjadi `OK` dan simpan log mentahnya.
+
+### Endpoint pendamping
+| Endpoint | Perilaku |
+|---|---|
+| `POST /iclock/fdata` | foto diabaikan (D7), `OK\n` |
+| `POST /iclock/registry` | mesin tak dikenal: `UNKNOWN DEVICE`; dikenal: info diperbarui, `DeviceType` 1 → `acc`, `att`/`0` → `att`, `RegistryCode=<10 karakter>` dari CSPRNG dan tetap setelah dibuat |
+| `POST /iclock/push` | parameter sesi (`ServerVersion` dari `push_version`, bawaan `2.3.0`) + mengantrekan `set_time`; tanpa LF akhir |
+| `GET /iclock/rtdata?type=time` | `DateTime=<detik ZK UTC>,ServerTZ=<±HHMM zona mesin>` |
+| `GET /iclock/ping` | `OK`, tanpa pemeriksaan |
+| `POST /iclock/querydata` | A1: `options` → `OK`; `count` memperbarui jumlah user/jari/wajah; `tabledata` memantulkan `<tablename>=<count>` (hanya karakter aman) tanpa menyimpan data |
+
+### Catatan pengujian
+Tanggal uji 2024-06 dan 2022 diasumsikan tidak berada di periode terkunci pada database uji; uji periode memakai Maret-Mei 2021 dan menghapusnya sendiri. Efek ke kehadiran harian v2 dibaca dari kode (kalkulator v2 hanya menyaring `status = approved`, bukan `source`), belum dilihat di UI v2.

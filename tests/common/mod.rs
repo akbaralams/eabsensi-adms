@@ -13,7 +13,7 @@ use axum::Router;
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode, header};
 use eabsensi_adms::http::{self, Limits};
-use eabsensi_adms::state::{AppState, QueueSettings};
+use eabsensi_adms::state::{AppState, IngestRules, QueueSettings};
 use http_body_util::BodyExt;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -78,12 +78,24 @@ pub fn app(pool: &PgPool, queue: QueueSettings) -> Router {
         AppState {
             db: pool.clone(),
             queue,
+            ingest: default_ingest(),
         },
         Limits {
             max_body_bytes: 1024 * 1024,
             request_timeout: Duration::from_secs(10),
         },
     )
+}
+
+pub fn default_ingest() -> IngestRules {
+    IngestRules {
+        attendance_zone: chrono_tz::Asia::Jakarta,
+        min_device_time: chrono::NaiveDate::from_ymd_opt(2020, 1, 1)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap(),
+        suspect_after: Duration::from_secs(500),
+    }
 }
 
 pub fn default_queue() -> QueueSettings {
@@ -248,6 +260,12 @@ impl TestDevice {
     }
 
     pub async fn cleanup(self, pool: &PgPool) {
+        // `device_logs.device_id` bersifat RESTRICT: log mentah dihapus lebih dulu.
+        sqlx::query("DELETE FROM device_logs WHERE device_id = $1")
+            .bind(self.id)
+            .execute(pool)
+            .await
+            .unwrap();
         sqlx::query("DELETE FROM devices WHERE id = $1")
             .bind(self.id)
             .execute(pool)
@@ -321,6 +339,48 @@ impl TestEmployee {
             .unwrap();
         sqlx::query("DELETE FROM departments WHERE id = $1")
             .bind(self.department_id)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+}
+
+/// Periode uji. `periods` unik per `(year, month)` dan dipakai bersama, jadi tiap uji memakai
+/// bulan sendiri (lihat komentar di uji yang memakainya).
+pub struct TestPeriod {
+    pub year: i16,
+    pub month: i16,
+}
+
+impl TestPeriod {
+    pub async fn create(pool: &PgPool, year: i16, month: i16, status: &str) -> Self {
+        sqlx::query(
+            "INSERT INTO periods (year, month, status, created_at, updated_at)              VALUES ($1, $2, $3, now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')              ON CONFLICT (year, month) DO UPDATE SET status = EXCLUDED.status",
+        )
+        .bind(year)
+        .bind(month)
+        .bind(status)
+        .execute(pool)
+        .await
+        .unwrap();
+        Self { year, month }
+    }
+
+    pub async fn cleanup(self, pool: &PgPool) {
+        sqlx::query("DELETE FROM periods WHERE year = $1 AND month = $2")
+            .bind(self.year)
+            .bind(self.month)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+}
+
+impl TestEmployee {
+    pub async fn set_active(&self, pool: &PgPool, active: bool) {
+        sqlx::query("UPDATE employees SET is_active = $2 WHERE id = $1")
+            .bind(self.id)
+            .bind(active)
             .execute(pool)
             .await
             .unwrap();

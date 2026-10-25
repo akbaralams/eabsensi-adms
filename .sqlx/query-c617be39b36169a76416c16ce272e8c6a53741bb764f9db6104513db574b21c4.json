@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.pin AS \"pin!\", l.device_time AS \"device_time!\"\n             FROM device_logs l\n             JOIN UNNEST($2::text[], $3::timestamp[]) AS t(pin, device_time)\n               ON l.pin = t.pin AND l.device_time = t.device_time\n            WHERE l.device_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pin!",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "device_logs",
+            "name": "pin"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "device_time!",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "device_logs",
+            "name": "device_time"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "TextArray",
+        "TimestampArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "c617be39b36169a76416c16ce272e8c6a53741bb764f9db6104513db574b21c4"
+}

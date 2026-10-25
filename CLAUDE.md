@@ -31,7 +31,7 @@ Rencana dan alasan pemisahan: `../eabsensi-v2/docs/rust-services-plan.md` (bagia
 Gunakan versi **stabil terbaru** untuk semuanya: toolchain Rust stable terbaru, dan setiap crate pada rilis stabil terbaru saat ditambahkan (cek crates.io/docs.rs, bukan dari ingatan). Pin versi di `Cargo.toml`, `Cargo.lock` di-commit. Saat mulai sesi baru, cek `cargo update --dry-run`/`cargo outdated` dan naikkan bila ada rilis baru.
 
 ## Environment (Windows)
-- Rust belum terpasang (Task 0). Toolchain MSVC.
+- Rust (toolchain MSVC) dan sqlx-cli sudah terpasang, versinya dicatat di README.
 - PostgreSQL 18 lokal `127.0.0.1:5432`, database dev `eabsensi_v2`. Kredensial di `../eabsensi-v2/.env`; salin ke `.env` repo ini (di-gitignore), jangan di-commit. `psql`/`pg_dump`: `C:\Program Files\PostgreSQL\18\bin`.
 - Mesin ZKTeco fisik mungkin tidak tersedia saat pengembangan; simulator mesin (Task 6) adalah alat uji utama.
 

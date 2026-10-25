@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_OFFLINE: "true"
+  SQLX_CLI_VERSION: "0.9.0"
+  # Skema berasal dari repo eabsensi-v2, dipin lewat berkas SCHEMA_VERSION (commit SHA).
+  SCHEMA_REPO: akbaralams/eabsensi-v2
+  SCHEMA_DUMP: database/dumps/pgsql-schema.sql
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eabsensi_adms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d eabsensi_adms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/eabsensi_adms
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Baca SCHEMA_VERSION
+        id: schema
+        run: |
+          sha="$(tr -d '[:space:]' < SCHEMA_VERSION)"
+          if ! printf '%s' "$sha" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "SCHEMA_VERSION harus berisi commit SHA 40 karakter, isinya: '$sha'" >&2
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      # Repo privat butuh token dengan akses baca ke eabsensi-v2 (secret V2_REPO_TOKEN);
+      # bila repo itu publik, github.token sudah cukup.
+      - name: Ambil dump skema dari eabsensi-v2
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.SCHEMA_REPO }}
+          ref: ${{ steps.schema.outputs.sha }}
+          token: ${{ secrets.V2_REPO_TOKEN || github.token }}
+          path: .schema-source
+          sparse-checkout: ${{ env.SCHEMA_DUMP }}
+          sparse-checkout-cone-mode: false
+
+      - name: Muat dump skema ke Postgres
+        run: |
+          # pg_dump 18 menyisipkan meta-perintah \restrict/\unrestrict yang tidak dikenal psql lama.
+          sed -E '/^[\](un)?restrict /d' ".schema-source/${SCHEMA_DUMP}" \
+            | psql "$DATABASE_URL" --set ON_ERROR_STOP=1 --quiet
+          psql "$DATABASE_URL" -tAc "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('devices','device_commands','device_logs','biometric_templates')" \
+            | grep -qx 4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Cache sqlx-cli
+        id: sqlx-cli-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/cargo-sqlx
+          key: sqlx-cli-${{ env.SQLX_CLI_VERSION }}-${{ runner.os }}
+
+      - name: Pasang sqlx-cli
+        if: steps.sqlx-cli-cache.outputs.cache-hit != 'true'
+        run: cargo install sqlx-cli --version "$SQLX_CLI_VERSION" --locked --no-default-features --features rustls,postgres
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Metadata sqlx offline mutakhir
+        run: cargo sqlx prepare --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --locked

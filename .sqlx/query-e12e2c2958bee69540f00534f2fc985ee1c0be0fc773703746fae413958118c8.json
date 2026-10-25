@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE devices\n              SET last_seen_at = now(),\n                  first_seen_at = COALESCE(first_seen_at, now()),\n                  updated_at = now() AT TIME ZONE 'UTC'\n            WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e12e2c2958bee69540f00534f2fc985ee1c0be0fc773703746fae413958118c8"
+}

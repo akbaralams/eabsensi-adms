@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE devices\n              SET firmware_version  = COALESCE($2, firmware_version),\n                  push_version      = COALESCE($3, push_version),\n                  ip_address        = COALESCE($4, ip_address),\n                  model             = COALESCE($5, model),\n                  platform          = COALESCE($6, platform),\n                  user_count        = COALESCE($7, user_count),\n                  fingerprint_count = COALESCE($8, fingerprint_count),\n                  face_count        = COALESCE($9, face_count),\n                  log_count         = COALESCE($10, log_count),\n                  reported_options  = COALESCE($11::jsonb, reported_options),\n                  updated_at        = now() AT TIME ZONE 'UTC'\n            WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "39ca87da8ea7ba1700fe7527a7f92c00ec7ed4f6fcdbd8382cfa23edeab9a4b4"
+}

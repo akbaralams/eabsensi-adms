@@ -1,0 +1,155 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id,\n                  serial_number,\n                  device_type,\n                  push_version,\n                  initialized_at IS NOT NULL AS \"initialized!\",\n                  timezone,\n                  poll_delay_seconds,\n                  error_delay_seconds,\n                  attlog_stamp,\n                  operlog_stamp,\n                  photo_stamp,\n                  biodata_stamp\n             FROM devices\n            WHERE serial_number = $1 AND is_active",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "serial_number",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "serial_number"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "device_type",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "device_type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "push_version",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "push_version"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "initialized!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "timezone",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "timezone"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "poll_delay_seconds",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "poll_delay_seconds"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "error_delay_seconds",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "error_delay_seconds"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "attlog_stamp",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "attlog_stamp"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "operlog_stamp",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "operlog_stamp"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "photo_stamp",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "photo_stamp"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "biodata_stamp",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "biodata_stamp"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      null,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "e21038033494df14a348410f86e01bd5990ea97c2d361b6ac16a41f46634a9cf"
+}

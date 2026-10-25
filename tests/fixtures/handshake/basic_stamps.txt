@@ -1,0 +1,12 @@
+GET OPTION FROM:SN-CONTOH-0001
+Stamp=111
+OpStamp=222
+PhotoStamp=333
+ErrorDelay=60
+Delay=30
+TransTimes=00:00;14:05
+TransInterval=1
+TransFlag=111111111111
+TimeZone=7
+Realtime=1
+Encrypt=0

@@ -1,0 +1,15 @@
+GET OPTION FROM:SN-CONTOH-0001
+Stamp=111
+OpStamp=222
+PhotoStamp=333
+ErrorDelay=60
+Delay=30
+PushProtVer=2.3.0
+ServerVer=2.3.0
+EncryptFlag=1000000000
+TransTimes=00:00;14:05
+TransInterval=1
+TransFlag=TransData AttLog	OpLog	AttPhoto	EnrollFP	EnrollUser	FPImag	ChgUser	ChgFP	FACE	UserPic	FVEIN	BioPhoto
+TimeZone=7
+Realtime=1
+Encrypt=0

@@ -1,13 +1,14 @@
 //! Lapisan HTTP. Parser protokol sengaja dipisah dari sini (dikerjakan di task berikutnya).
 
 mod health;
+mod iclock;
 
 use std::time::Duration;
 
 use axum::Router;
 use axum::extract::DefaultBodyLimit;
 use axum::http::StatusCode;
-use axum::routing::get;
+use axum::routing::{get, post};
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 
@@ -35,6 +36,9 @@ pub fn router(state: AppState, limits: Limits) -> Router {
     let routes = Router::new()
         .route("/healthz", get(health::healthz))
         .route("/readyz", get(health::readyz))
+        .route("/iclock/cdata", get(iclock::connect))
+        .route("/iclock/getrequest", get(iclock::poll))
+        .route("/iclock/devicecmd", post(iclock::command_result))
         .with_state(state);
 
     apply_limits(routes, limits)

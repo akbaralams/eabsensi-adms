@@ -8,7 +8,7 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::post;
 use eabsensi_adms::http::{self, Limits};
-use eabsensi_adms::state::AppState;
+use eabsensi_adms::state::{AppState, QueueSettings};
 use http_body_util::BodyExt;
 use sqlx::postgres::PgPoolOptions;
 use tower::ServiceExt;
@@ -36,7 +36,17 @@ fn unreachable_state() -> AppState {
         .acquire_timeout(Duration::from_millis(100))
         .connect_lazy("postgres://u:p@127.0.0.1:1/x")
         .unwrap();
-    AppState { db }
+    state_with(db)
+}
+
+fn state_with(db: sqlx::PgPool) -> AppState {
+    AppState {
+        db,
+        queue: QueueSettings {
+            ack_timeout: Duration::from_secs(120),
+            max_attempts: 3,
+        },
+    }
 }
 
 #[tokio::test]
@@ -69,7 +79,7 @@ async fn readyz_200_dengan_database_dan_skema_mesin() {
         .connect(&url)
         .await
         .unwrap();
-    let app = http::router(AppState { db }, limits());
+    let app = http::router(state_with(db), limits());
 
     let (status, body) = get(app, "/readyz").await;
 

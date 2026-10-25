@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO device_commands\n                   (device_id, command_type, priority, status, created_at, updated_at)\n            VALUES ($1, $2, $3, 'pending', now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')\n       ON CONFLICT (device_id, command_type)\n                WHERE status IN ('pending', 'sent') AND command_type IN ('info', 'check', 'set_time')\n         DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "75ec6a0b79dc8d04820494f6aa6f4f98db80e0eddfea785370af2a7a43e9e05a"
+}

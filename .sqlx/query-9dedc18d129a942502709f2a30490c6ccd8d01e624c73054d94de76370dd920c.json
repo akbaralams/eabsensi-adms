@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT priority\n             FROM device_commands\n            WHERE device_id = $1 AND status = 'pending' AND available_at <= now() + interval '1 second'\n            ORDER BY priority\n            LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "priority",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "device_commands",
+            "name": "priority"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9dedc18d129a942502709f2a30490c6ccd8d01e624c73054d94de76370dd920c"
+}

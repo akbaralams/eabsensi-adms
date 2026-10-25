@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE device_commands\n              SET status = 'failed',\n                  result_message = left($2, 255),\n                  completed_at = now(),\n                  updated_at = now() AT TIME ZONE 'UTC'\n            WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "58588aff24fed65ead3bf2ec0c522ea7f9a1f5017a995be5226eb6a1cd3fec9f"
+}

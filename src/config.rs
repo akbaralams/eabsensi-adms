@@ -9,6 +9,8 @@ const DEFAULT_MAX_BODY_BYTES: usize = 8 * 1024 * 1024;
 const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_DB_MAX_CONNECTIONS: u32 = 10;
 const DEFAULT_DB_ACQUIRE_TIMEOUT_SECS: u64 = 5;
+const DEFAULT_COMMAND_ACK_TIMEOUT_SECS: u64 = 120;
+const DEFAULT_COMMAND_MAX_ATTEMPTS: i16 = 3;
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum ConfigError {
@@ -26,6 +28,10 @@ pub struct Config {
     pub request_timeout: Duration,
     pub db_max_connections: u32,
     pub db_acquire_timeout: Duration,
+    /// Perintah `sent` yang tidak dijawab mesin selama ini kembali `pending`.
+    pub command_ack_timeout: Duration,
+    /// Setelah sekian kali dikirim tanpa jawaban, perintah ditandai `failed`.
+    pub command_max_attempts: i16,
 }
 
 // `database_url` memuat kata sandi, jadi tidak boleh ikut tercetak.
@@ -38,6 +44,8 @@ impl fmt::Debug for Config {
             .field("request_timeout", &self.request_timeout)
             .field("db_max_connections", &self.db_max_connections)
             .field("db_acquire_timeout", &self.db_acquire_timeout)
+            .field("command_ack_timeout", &self.command_ack_timeout)
+            .field("command_max_attempts", &self.command_max_attempts)
             .finish()
     }
 }
@@ -72,6 +80,16 @@ impl Config {
                 "ADMS_DB_ACQUIRE_TIMEOUT_SECS",
                 DEFAULT_DB_ACQUIRE_TIMEOUT_SECS,
             )?),
+            command_ack_timeout: Duration::from_secs(parse_positive(
+                &get,
+                "ADMS_COMMAND_ACK_TIMEOUT_SECS",
+                DEFAULT_COMMAND_ACK_TIMEOUT_SECS,
+            )?),
+            command_max_attempts: parse_positive(
+                &get,
+                "ADMS_COMMAND_MAX_ATTEMPTS",
+                DEFAULT_COMMAND_MAX_ATTEMPTS,
+            )?,
         })
     }
 }
@@ -134,6 +152,8 @@ mod tests {
         assert_eq!(config.max_body_bytes, 8 * 1024 * 1024);
         assert_eq!(config.request_timeout, Duration::from_secs(30));
         assert_eq!(config.db_max_connections, 10);
+        assert_eq!(config.command_ack_timeout, Duration::from_secs(120));
+        assert_eq!(config.command_max_attempts, 3);
     }
 
     #[test]

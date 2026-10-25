@@ -1,7 +1,7 @@
 use anyhow::Context;
 use eabsensi_adms::config::Config;
 use eabsensi_adms::http::{self, Limits};
-use eabsensi_adms::state::AppState;
+use eabsensi_adms::state::{AppState, QueueSettings};
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
@@ -27,7 +27,13 @@ async fn main() -> anyhow::Result<()> {
         .connect_lazy(&config.database_url)
         .context("DATABASE_URL tidak valid")?;
 
-    let app = http::router(AppState { db }, Limits::from(&config));
+    let app = http::router(
+        AppState {
+            db,
+            queue: QueueSettings::from(&config),
+        },
+        Limits::from(&config),
+    );
 
     let listener = TcpListener::bind(config.bind_addr)
         .await

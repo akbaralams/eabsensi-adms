@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE device_commands\n              SET status = CASE WHEN attempts >= $3 THEN 'failed' ELSE 'pending' END,\n                  completed_at = CASE WHEN attempts >= $3 THEN now() END,\n                  result_message = CASE WHEN attempts >= $3 THEN 'tidak ada jawaban dari mesin' END,\n                  updated_at = now() AT TIME ZONE 'UTC'\n            WHERE device_id = $1\n              AND status = 'sent'\n              AND sent_at < now() - make_interval(secs => $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Float8",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "32202dbf08c220fe27c943613d2e445259c3aae5235798792d7fea1fa54d8a88"
+}

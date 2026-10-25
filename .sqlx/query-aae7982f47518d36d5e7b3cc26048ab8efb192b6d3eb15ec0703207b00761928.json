@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE devices\n              SET device_type = 'att', updated_at = now() AT TIME ZONE 'UTC'\n            WHERE id = $1 AND device_type <> 'att'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aae7982f47518d36d5e7b3cc26048ab8efb192b6d3eb15ec0703207b00761928"
+}

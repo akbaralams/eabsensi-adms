@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE devices\n              SET push_version = $2, updated_at = now() AT TIME ZONE 'UTC'\n            WHERE id = $1 AND push_version IS DISTINCT FROM $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f163d0a06b0510d6db8639fc5c9b6e09f6177575067d8d4acca50b9c0be3dd7f"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE devices\n              SET initialized_at = now(), updated_at = now() AT TIME ZONE 'UTC'\n            WHERE id = $1 AND initialized_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "86cb15a4b56e96cfc1e0c5bc2b487de7e557deb4d2f74a6f2f3c8a078f246bb5"
+}

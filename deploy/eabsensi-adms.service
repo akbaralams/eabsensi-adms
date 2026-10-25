@@ -1,0 +1,60 @@
+# Unit systemd untuk eabsensi-adms. BELUM diuji pada host systemd (disusun mengikuti praktik umum
+# dan keluaran `eabsensi-adms --help`); lihat docs/operations.md bagian "Menjalankan sebagai service".
+#
+# Pasang:
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin eabsensi-adms
+#   sudo install -d -o root -g root -m 0755 /opt/eabsensi-adms
+#   sudo install -m 0755 eabsensi-adms adms-sim /opt/eabsensi-adms/
+#   sudo install -d -m 0750 -o root -g root /etc/eabsensi-adms
+#   sudo install -m 0600 -o root -g root eabsensi-adms.env /etc/eabsensi-adms/eabsensi-adms.env
+#   sudo cp deploy/eabsensi-adms.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now eabsensi-adms
+
+[Unit]
+Description=eAbsensi ADMS (server mesin absensi ZKTeco)
+Documentation=file:///opt/eabsensi-adms/docs/operations.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=eabsensi-adms
+Group=eabsensi-adms
+# Berkas ini berisi DATABASE_URL dan BIOMETRIC_KEY: pemilik root, mode 0600. systemd membacanya
+# sebagai root sebelum menurunkan hak, jadi pengguna layanan tidak perlu bisa membacanya.
+EnvironmentFile=/etc/eabsensi-adms/eabsensi-adms.env
+ExecStart=/opt/eabsensi-adms/eabsensi-adms serve
+Restart=on-failure
+RestartSec=5
+# Berhenti dengan rapi (SIGTERM): menunggu request yang sedang berjalan selesai.
+TimeoutStopSec=35
+LimitNOFILE=65536
+UMask=0077
+
+# Port di bawah 1024 (mis. 80 bila mesin tidak bisa memakai port lain dan tanpa reverse proxy)
+# tanpa menjadi root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Pengerasan: layanan hanya butuh jaringan; tidak menulis ke disk (log ke stdout -> journald).
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+[Install]
+WantedBy=multi-user.target

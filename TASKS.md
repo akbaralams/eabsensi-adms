@@ -45,6 +45,6 @@ Baca `../eabsensi-99` secara menyeluruh dan tulis `docs/legacy-analysis.md`:
 - Binary/test helper yang meniru mesin ZKTeco: handshake, kirim ATTLOG (termasuk kiriman ulang dan batch besar), polling perintah, kirim hasil perintah.
 - **Selesai bila**: test integrasi end-to-end berjalan di CI dengan simulator; uji beban sederhana (mis. 100 mesin polling bersamaan) tercatat.
 
-## [ ] Task 7. Operasional
+## [x] Task 7. Operasional
 - Panduan deploy (Windows service/systemd, port, firewall/VPN ke jaringan mesin), konfigurasi alamat server di mesin, pemantauan mesin offline.
 - **Selesai bila**: README berisi langkah deploy dan pemeriksaan setelah deploy; diuji dengan minimal satu mesin fisik bila tersedia.

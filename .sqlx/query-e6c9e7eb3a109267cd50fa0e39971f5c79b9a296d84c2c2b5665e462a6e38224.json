@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE biometric_templates\n              SET ciphertext = $3, nonce = $4, key_id = $5,\n                  updated_at = now() AT TIME ZONE 'UTC'\n            WHERE id = $1 AND key_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Bytea",
+        "Bytea",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e6c9e7eb3a109267cd50fa0e39971f5c79b9a296d84c2c2b5665e462a6e38224"
+}

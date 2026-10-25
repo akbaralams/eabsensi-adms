@@ -103,3 +103,57 @@ pub async fn upsert(conn: &mut PgConnection, template: &NewTemplate<'_>) -> sqlx
     .await?;
     Ok(())
 }
+
+/// Baris yang belum memakai kunci terkini, berurutan menurut id mulai setelah `after_id`
+/// (untuk `rekey-biometrics`). `from` membatasi ke satu `key_id` lama.
+pub async fn not_under_key(
+    pool: &PgPool,
+    current_key_id: &str,
+    from: Option<&str>,
+    after_id: i64,
+    limit: i64,
+) -> sqlx::Result<Vec<Stored>> {
+    sqlx::query_as!(
+        Stored,
+        r#"SELECT id, employee_id, kind, finger_index, algorithm_version, is_valid,
+                  original_size, ciphertext, nonce, key_id
+             FROM biometric_templates
+            WHERE key_id <> $1
+              AND ($2::text IS NULL OR key_id = $2)
+              AND id > $3
+            ORDER BY id
+            LIMIT $4"#,
+        current_key_id,
+        from,
+        after_id,
+        limit
+    )
+    .fetch_all(pool)
+    .await
+}
+
+/// Menulis ulang ciphertext sebuah baris dengan kunci baru. Hanya berlaku bila baris masih
+/// memakai `expected_key_id` (bila mesin menimpa baris itu di tengah jalan, penimpaan menang).
+pub async fn reseal(
+    conn: &mut PgConnection,
+    id: i64,
+    expected_key_id: &str,
+    ciphertext: &[u8],
+    nonce: &[u8],
+    new_key_id: &str,
+) -> sqlx::Result<bool> {
+    let result = sqlx::query!(
+        r#"UPDATE biometric_templates
+              SET ciphertext = $3, nonce = $4, key_id = $5,
+                  updated_at = now() AT TIME ZONE 'UTC'
+            WHERE id = $1 AND key_id = $2"#,
+        id,
+        expected_key_id,
+        ciphertext,
+        nonce,
+        new_key_id
+    )
+    .execute(conn)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}

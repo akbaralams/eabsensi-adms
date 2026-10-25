@@ -1,0 +1,55 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT serial_number,\n                  name,\n                  EXTRACT(EPOCH FROM (now() - last_seen_at))::float8 AS seconds_since_seen,\n                  GREATEST($1::float8 * poll_delay_seconds, $2::float8) AS \"threshold!\"\n             FROM devices\n            WHERE is_active\n              AND (last_seen_at IS NULL\n                   OR last_seen_at < now() - make_interval(\n                          secs => GREATEST($1::float8 * poll_delay_seconds, $2::float8)))\n            ORDER BY last_seen_at NULLS FIRST, serial_number",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "serial_number",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "serial_number"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "seconds_since_seen",
+        "type_info": "Float8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "threshold!",
+        "type_info": "Float8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "e46e195e760561602e9eeb6042a481ac6c8bb01e7a858665493b978ae3fabdf1"
+}

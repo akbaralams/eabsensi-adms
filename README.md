@@ -70,3 +70,39 @@ SELECT 'SN-' || lpad(n::text, 4, '0'), 'Simulasi', now(), now() FROM generate_se
 ```
 
 Perilaku firmware yang belum terbukti (mis. apakah stamp menghentikan pengiriman ulang) diuji pada kedua kemungkinan; simulator bukan pengganti uji di mesin fisik.
+
+## Deploy
+
+Ringkasan; perincian, alasan, dan pemecahan masalah ada di [docs/operations.md](docs/operations.md).
+
+1. **Skema dulu.** Terapkan migration `eabsensi-v2` sampai commit di berkas `SCHEMA_VERSION` (ADMS tidak punya migration).
+2. **Role database** `eabsensi_adms` dengan hak minimal (daftar `GRANT` di operations.md bagian 3).
+3. **Build** di mesin build: `SQLX_OFFLINE=true cargo build --release --locked`, salin `target/release/eabsensi-adms` ke server.
+4. **Konfigurasi lewat environment** (daftar di [.env.example](.env.example)): `DATABASE_URL` wajib; `ADMS_BIND_ADDR` diikat ke antarmuka jaringan mesin; `ADMS_ATTENDANCE_TIMEZONE` sama dengan v2; `BIOMETRIC_KEY` + `BIOMETRIC_KEY_ID` bila template biometrik dipakai (tanpa kunci biometrik dinonaktifkan).
+5. **Jalankan sebagai service**: systemd ([deploy/eabsensi-adms.service](deploy/eabsensi-adms.service)) atau NSSM/WinSW di Windows (belum diuji; contoh di operations.md bagian 7).
+6. **Jaringan**: izinkan port server hanya dari subnet mesin (LAN/VPN). Protokol mesin tanpa TLS dan tanpa autentikasi selain nomor seri; jangan buka ke internet.
+7. **Mesin**: daftarkan serial di UI v2 lebih dulu, lalu isi alamat dan port server di menu mesin (*COMM. → Cloud Server Setting*). Mesin yang belum terdaftar ditolak tetapi menyimpan datanya.
+
+### Pemeriksaan setelah deploy
+
+| Langkah | Hasil yang diharapkan |
+|---|---|
+| `curl http://<host>:<port>/healthz` | `{"status":"ok","version":"..."}` |
+| `curl -i http://<host>:<port>/readyz` | `200` `{"status":"ready"}` (503 = database/skema/hak bermasalah) |
+| Log start (JSON) | `"eabsensi-adms melayani"`; tanpa `WARN` tak terduga |
+| `eabsensi-adms check-offline` | tanpa galat database (mesin baru wajar terdaftar sebagai offline) |
+| `adms-sim --url http://<host>:<port> --serial <SN terdaftar> --rows 5 --cycles 2 --pin <employee_number>` | `0 galat`, 5 log menjadi 5 punch di v2 |
+| Satu mesin fisik, satu absensi | `device_logs.outcome = punched`, punch `source = device`, tampil di kehadiran harian v2; tidak ada punch ganda setelah jaringan diputus-sambung |
+
+Uji dengan mesin fisik **belum dilakukan** (tidak tersedia saat pengembangan); panduan pengujian pertamanya di [docs/field-test-checklist.md](docs/field-test-checklist.md).
+
+## Perintah operasional
+
+Biner yang sama menjalankan server (tanpa argumen atau `serve`) dan subperintah berikut (membaca `DATABASE_URL` dari environment; `--help` untuk ringkasan):
+
+```bash
+eabsensi-adms check-offline [--factor 3] [--min-seconds 120]   # status keluar 0 online semua, 2 ada mesin offline, 1 galat
+eabsensi-adms rekey-biometrics [--from ID_KUNCI] [--dry-run]    # rotasi kunci biometrik; 0 sukses, 2 ada baris tak bisa dibuka
+```
+
+Jadwalkan `check-offline` (cron/Task Scheduler) untuk peringatan mesin offline; prosedur rotasi kunci, pencadangan kunci, masa simpan log (usulan 24 bulan), dan pola log yang perlu diberi peringatan ada di operations.md bagian 9, 12, dan 13.

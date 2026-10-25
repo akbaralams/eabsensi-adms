@@ -2,7 +2,7 @@
 
 Urutan wajib. Tiap task selesai bila kriteria "Selesai bila" terpenuhi dan sudah di-commit. Tandai `[x]` saat selesai.
 
-## [ ] Task 0. Toolchain
+## [x] Task 0. Toolchain
 - Minta user memasang Rust stable terbaru (rustup, MSVC; butuh Visual Studio Build Tools "Desktop development with C++"). Jangan memasang sendiri tanpa izin.
 - Pasang `sqlx-cli` terbaru (fitur postgres).
 - **Selesai bila**: versi `cargo`, `rustc`, `sqlx` tercatat di README.

@@ -31,7 +31,7 @@ Task 7 meminta uji dengan minimal satu mesin fisik "bila tersedia". Saat pengemb
 
 ## Hasil pertama
 
-Lihat "Temuan uji mesin fisik pertama" dan "Lanjutan" di [implementation-notes.md](implementation-notes.md): model `UA200`, firmware `Ver 6.60 Jul 24 2013`. Pengamatan 1-3, 5 (jam sudah benar, penyebabnya belum pasti), dan 7 (INFO/CHECK) terbukti; **3**: pengembalian stamp menghentikan kiriman ulang; **7**: `REBOOT` dijawab OK tetapi tidak dijalankan; **6** (`SET TIME`) tidak dijawab dan belum diselidiki; 8-13 belum dicoba.
+Lihat "Temuan uji mesin fisik pertama" dan "Lanjutan" di [implementation-notes.md](implementation-notes.md): model `UA200`, firmware `Ver 6.60 Jul 24 2013`. Pengamatan 1-3, 5 (jam tersinkron lewat header `Date` berhuruf kapital, diuji dengan mengubah jam manual), dan 7 (INFO/CHECK) terbukti; **3**: pengembalian stamp menghentikan kiriman ulang; **7**: `REBOOT` dijawab OK tetapi tidak dijalankan; **6** (`SET TIME`) tidak dijawab dan belum diselidiki; 8-13 belum dicoba.
 
 ## Hasil
 Isi tabel ini (atau salin ke tiket) setelah uji pertama, lalu perbarui [legacy-analysis.md](legacy-analysis.md) bagian 10 dan [implementation-notes.md](implementation-notes.md) dengan fakta yang terbukti.

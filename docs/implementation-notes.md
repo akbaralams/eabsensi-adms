@@ -175,7 +175,8 @@ Mesin: model `UA200`, platform `ZEM560_TFT`, firmware `Ver 6.60 Jul 24 2013`, se
 
 Yang terbukti:
 - Handshake bentuk dasar (firmware lama) diterima: mesin terus polling, menjawab `INFO` dan `CHECK`, dan `REBOOT` dua kali dijawab `Return=0`.
-- Penerimaan ATTLOG nyata: 58 log dari 5 PIN, semuanya `unknown_pin` (belum ada pegawai), tanpa baris rusak. Setelah mesin di-reboot, seluruh 58 log dikirim ulang (`kiriman_ulang = 58`, tidak ada log ganda): mesin mengirim ulang seluruh ingatannya setiap kali terhubung kembali, persis perilaku yang tercatat di log produksi lama.
+- Penerimaan ATTLOG nyata: 58 log dari 5 PIN, semuanya `unknown_pin` (belum ada pegawai), tanpa baris rusak. Delapan menit kemudian seluruh 58 log dikirim ulang (`kiriman_ulang = 58`, tidak ada log ganda): mesin mengirim ulang seluruh ingatannya pada koneksi berikutnya, persis perilaku yang tercatat di log produksi lama. Pemicunya **belum diketahui**; semula diduga reboot, tetapi operator melaporkan mesin tidak restart saat perintah `REBOOT` dikirim, jadi kaitannya tidak terbukti.
+- **`REBOOT` dijawab `Return=0` tetapi layar mesin tidak restart** (diamati operator). Server mengirim `C:<id>:REBOOT` persis seperti kode lama dan mesin menjawab dalam detik yang sama, jadi saluran perintah bekerja (`CHECK` memicu unggahan log, `INFO` dijawab lengkap). Firmware 6.60 (2013) tampaknya mengakui perintah itu tanpa melaksanakannya lewat jalur ini. Belum diteliti lebih jauh; fitur reboot dari operator tidak bisa diandalkan untuk model ini. Status `succeeded` di UI v2 hanya berarti mesin membalas OK.
 - `INFO` firmware ini **tidak memuat `PushVersion`**, jadi `devices.push_version` tetap kosong dan handshake memakai bentuk dasar.
 
 Yang tidak seperti hipotesis:

@@ -275,7 +275,11 @@ pub async fn poll(
         };
 
         match rendered {
-            Ok(lines) => body.push_str(&lines),
+            Ok(lines) => {
+                // Hanya id dan jenis; isi perintah (nama pegawai, template) tidak pernah dicatat.
+                tracing::debug!(serial = %serial, perintah = item.id, jenis = %item.command_type, "perintah dikirim ke mesin");
+                body.push_str(&lines);
+            }
             Err(error) => {
                 tracing::warn!(serial = %serial, perintah = item.id, jenis = %item.command_type, %error, "perintah tidak dapat dirakit");
                 commands::fail(&state.db, item.id, &error.to_string()).await?;
@@ -329,6 +333,7 @@ pub async fn command_result(
         }
         DeviceCmdBody::Results(results) => {
             for result in results {
+                tracing::debug!(serial = %serial, perintah = result.id, kode = ?result.return_code, cmd = %result.cmd, "hasil perintah dari mesin");
                 let updated =
                     commands::complete(&state.db, device.id, result.id, result.return_code).await?;
                 if !updated {

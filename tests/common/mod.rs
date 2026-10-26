@@ -427,11 +427,7 @@ pub async fn spawn(router: Router) -> Server {
         .expect("gagal membuka port uji");
     let addr = listener.local_addr().unwrap();
     let handle = tokio::spawn(async move {
-        let _ = axum::serve(
-            listener,
-            router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        )
-        .await;
+        let _ = http::serve(listener, router, std::future::pending::<()>()).await;
     });
     Server { addr, handle }
 }

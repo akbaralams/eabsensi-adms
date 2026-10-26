@@ -130,13 +130,9 @@ async fn serve() -> anyhow::Result<()> {
         .with_context(|| format!("gagal membuka {}", config.bind_addr))?;
     tracing::info!(addr = %config.bind_addr, versi = env!("CARGO_PKG_VERSION"), "eabsensi-adms melayani");
 
-    axum::serve(
-        listener,
-        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
-    )
-    .with_graceful_shutdown(shutdown_signal())
-    .await
-    .context("server berhenti dengan galat")?;
+    http::serve(listener, app, shutdown_signal())
+        .await
+        .context("server berhenti dengan galat")?;
 
     tracing::info!("eabsensi-adms berhenti");
     Ok(())

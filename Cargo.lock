@@ -413,6 +413,8 @@ dependencies = [
  "chrono-tz",
  "dotenvy",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "rand",
  "serde",
  "serde_json",

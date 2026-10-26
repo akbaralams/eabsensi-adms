@@ -168,3 +168,21 @@ Lihat [load-test.md](load-test.md): 100 mesin bersamaan, 4.700 request siklus pe
 - **Build rilis**: `SQLX_OFFLINE=true cargo build --release --locked` ±1 menit di mesin pengembangan; `eabsensi-adms` ±7 MB, `adms-sim` ±0,8 MB.
 - **Yang tidak dikerjakan dan alasannya**: pembungkus service Windows (butuh perangkat pihak ketiga yang perlu disetujui; contoh NSSM ada tetapi belum diuji), Dockerfile (tidak diminta), metrik Prometheus (pemantauan memakai `check-offline`, `/healthz`, `/readyz`, dan log), dukungan `X-Forwarded-For` (tercatat sebagai batas di operations.md), mode perekaman payload di server (packet capture cukup dan tidak menambah risiko data pribadi di log).
 - **Uji mesin fisik** tidak mungkin saat pengembangan; [field-test-checklist.md](field-test-checklist.md) memuat 13 pengamatan terhadap hipotesis yang masih terbuka beserta tindakan bila hasilnya lain.
+
+## Temuan uji mesin fisik pertama (26 Oktober 2026)
+
+Mesin: model `UA200`, platform `ZEM560_TFT`, firmware `Ver 6.60 Jul 24 2013`, serial yang sama dengan yang muncul di log produksi lama. Terhubung ke server pengembangan lewat jaringan lokal.
+
+Yang terbukti:
+- Handshake bentuk dasar (firmware lama) diterima: mesin terus polling, menjawab `INFO` dan `CHECK`, dan `REBOOT` dua kali dijawab `Return=0`.
+- Penerimaan ATTLOG nyata: 58 log dari 5 PIN, semuanya `unknown_pin` (belum ada pegawai), tanpa baris rusak. Setelah mesin di-reboot, seluruh 58 log dikirim ulang (`kiriman_ulang = 58`, tidak ada log ganda): mesin mengirim ulang seluruh ingatannya setiap kali terhubung kembali, persis perilaku yang tercatat di log produksi lama.
+- `INFO` firmware ini **tidak memuat `PushVersion`**, jadi `devices.push_version` tetap kosong dan handshake memakai bentuk dasar.
+
+Yang tidak seperti hipotesis:
+- **`set_time` tidak dijawab** mesin (tiga kali dikirim, lalu `failed`: "tidak ada jawaban dari mesin"), sementara `REBOOT` dijawab. Firmware ini tidak menjawab `SET OPTIONS MachineTZ=...` / `SET OPTIONS DateTime=...` (dua baris dengan id sama). Penyebab belum diketahui (nama perintah, jumlah baris, atau firmware yang tidak mendukung). Kode lama tidak pernah mengirim perintah ini ke mesin yang tidak memanggil `push`.
+- **`attlog_stamp` dan `operlog_stamp` tetap kosong** setelah dua kali unggah: mesin tidak mengirim `Stamp`/`OpStamp` numerik pada unggahannya (di log produksi lama ada). Log sekarang mencatat nilai `Stamp` mentah (`stamp` pada baris `ATTLOG diterima`) dan, dengan `RUST_LOG=...tower_http=debug`, URI lengkap setiap request.
+- **Jam mesin tidak ikut tersinkron** seperti pada server lama. Hipotesis utama: firmware menyelaraskan jam dari header `Date` respons (server lama tidak mengirim perintah jam ke mesin ini, dan log lama tidak memuat `push`/`rtdata`). Respons hyper memakai nama header huruf kecil (`date:`, `content-type:`), sedangkan Apache/PHP mengirim `Date:`, `Content-Type:`. Pengurai firmware 2013 yang peka huruf besar/kecil tidak akan menemukan `date:`.
+  - Perbaikan yang dicoba: penyaji sendiri di atas hyper (`src/http/serve.rs`) dengan `title_case_headers(true)`, sehingga respons memakai `Date:`, `Content-Type:`, `Content-Length:`, `Connection:` seperti server lama. Diuji di `tests/wire.rs` (nama header kapital, `Date` berformat RFC 2822 dan akurat, berhenti rapi).
+  - **Belum terbukti** menyelaraskan jam mesin; perlu dicoba pada mesin ini. Bila tidak berhasil: periksa isi header respons dengan Wireshark, lalu coba bentuk perintah `SET OPTION DateTime=...` (tunggal), dan bandingkan dengan tangkapan lalu lintas ke server lama bila masih tersedia.
+
+Perubahan kode dari temuan ini: penyaji dengan header kapital awal, log diagnostik (`perintah dikirim ke mesin`, `hasil perintah dari mesin`, nilai `Stamp` mentah) pada level debug/info tanpa isi perintah (nama pegawai dan template tidak pernah dicatat).

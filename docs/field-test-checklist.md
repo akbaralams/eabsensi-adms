@@ -29,6 +29,10 @@ Task 7 meminta uji dengan minimal satu mesin fisik "bila tersedia". Saat pengemb
 | 12 | **`rtlog`/`Realtime=1`** | capture apakah mesin memakai `table=rtlog` | tidak dipakai atau diabaikan tanpa efek (keputusan D7) | bila log absensi hanya datang lewat `rtlog` pada mesin tertentu, aktifkan pemrosesan `rtlog` |
 | 13 | **Pemulihan jaringan** | putus lalu sambung jaringan mesin saat ada absensi | semua log tiba tanpa duplikat; `check-offline` melaporkan lalu memulihkan | catat durasi sampai mesin kembali online |
 
+## Hasil pertama
+
+Lihat bagian "Temuan uji mesin fisik pertama" di [implementation-notes.md](implementation-notes.md): model `UA200`, firmware `Ver 6.60 Jul 24 2013`; handshake, polling, INFO/CHECK/REBOOT, dan penerimaan ATTLOG terbukti; `set_time` tidak dijawab, `Stamp` tidak terkirim, dan sinkronisasi jam lewat header `Date` sedang diuji.
+
 ## Hasil
 Isi tabel ini (atau salin ke tiket) setelah uji pertama, lalu perbarui [legacy-analysis.md](legacy-analysis.md) bagian 10 dan [implementation-notes.md](implementation-notes.md) dengan fakta yang terbukti.
 

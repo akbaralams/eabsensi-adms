@@ -3,6 +3,7 @@
 mod data;
 mod health;
 mod iclock;
+mod serve;
 
 use std::time::Duration;
 
@@ -12,6 +13,8 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
+
+pub use serve::serve;
 
 use crate::config::Config;
 use crate::state::AppState;

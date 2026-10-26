@@ -167,8 +167,18 @@ pub async fn upload(
             )
             .await?;
 
+            // Nilai `Stamp` mentah (angka, tanpa data pribadi) dicatat agar bentuk yang dikirim
+            // firmware terlihat; dipotong supaya masukan aneh tidak menggelembungkan log.
+            let stamp_raw: String = query
+                .stamp
+                .as_deref()
+                .unwrap_or("-")
+                .chars()
+                .take(40)
+                .collect();
             tracing::info!(
                 serial = %serial,
+                stamp = %stamp_raw,
                 baris = summary.lines,
                 rusak = summary.malformed,
                 kiriman_ulang = summary.resent,

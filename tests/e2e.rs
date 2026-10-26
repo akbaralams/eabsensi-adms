@@ -88,6 +88,14 @@ async fn mesin_baru_menyelesaikan_inisialisasi_lalu_mengirim_ulang_batch_tanpa_d
             .await
             .unwrap();
     assert!(initialized, "INFO berhasil menandai mesin terinisialisasi");
+    // Alamat klien sampai ke handler lewat penyaji sendiri (`ConnectInfo`).
+    let source_ip: Option<String> =
+        sqlx::query_scalar("SELECT source_ip FROM device_logs WHERE device_id = $1 LIMIT 1")
+            .bind(device.id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(source_ip.as_deref(), Some("127.0.0.1"));
 
     // Koneksi 2: CHECK dari server; handshake kini bentuk "push 2.3.0".
     let second = machine.cycle().await.unwrap();
